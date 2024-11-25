@@ -6,6 +6,7 @@ class User(db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    role = db.Column(db.String(50), nullable=False, default='user')
     type = db.Column(db.String(50), nullable=False, default='user')
     subtype = db.Column(db.String(100))
     user_name = db.Column(db.String(100), nullable=False)

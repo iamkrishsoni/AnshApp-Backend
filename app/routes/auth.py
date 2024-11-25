@@ -1,7 +1,8 @@
 from flask import Blueprint, request, jsonify
-from ..models import OTP, User, BountyPoints
+from ..models import OTP, User, BountyPoints, BugBountyWallet
 from ..db import db
 import jwt
+from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
 from flask import current_app
 from sqlalchemy import or_, and_
@@ -32,11 +33,25 @@ def signup():
         return jsonify({"message": "User already exists"}), 409
 
     # Create a new user
-    new_user = User(role=role)
-    if email:
-        new_user.email = email
-    if phone:
-        new_user.phone = phone
+    new_user = User(
+        type='user',  # Default type
+        role=role,
+        user_name=data.get('user_name', 'Anonymous User'),  # Default to 'Anonymous User' if not provided
+        email=email,
+        phone=phone,
+        hashed_password=password,  # Will be set later by the password hash function
+        date_of_birth=data.get('date_of_birth', ''),  # Default empty string if not provided
+        user_gender=data.get('user_gender', 'Unknown'),  # Default to 'Unknown' if not provided
+        location=data.get('location', ''),  # Default to empty string if not provided
+        email_verified=False,  # Default to False
+        mobile_verified=False,  # Default to False
+        term_conditions_signed=False,  # Default to False
+        is_anonymous='no',  # Default to 'no'
+        user_status=1,  # Default to active status
+        sign_up_date=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")  # Set current time as signup date
+    )
+
+    # Set the password
     new_user.set_password(password)
 
     try:

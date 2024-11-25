@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash
-from ..models import User, BountyPoints
+from ..models import User, BountyPoints, BugBountyWallet
 from ..db import db
 from ..utils import token_required  
 from sqlalchemy.exc import SQLAlchemyError
@@ -91,48 +91,126 @@ def delete_user(userid):
 
 
 
-@bounty_points_bp.route("/user/<int:userId>/bountypoints", methods=["PUT"])
+@user_bp.route("/user/<int:userId>/bountypoints", methods=["POST"])
 @token_required
 def update_bounty_points(userId):
-    
-    data = request.get_json()
-
-    # Validate input
-    if not data or 'points' not in data:
-        return jsonify({"message": "Invalid input, 'points' field is required"}), 400
-
-    bounty_points = BountyPoints.query.filter_by(user_id=userId).first()
-
-    if not bounty_points:
-        return jsonify({"message": "Bounty points for the user not found"}), 404
-
     try:
-        bounty_points.last_added_points = data['points']
-        bounty_points.points += int(data['points'])
-        bounty_points.date = datetime.now().date()
+        data = request.get_json()
+
+        wallet_id = data.get('wallet_id')
+        category = data.get('category')
+        points = data.get('points')
+        name = data.get('name')  # Include 'name' explicitly
+
+        # Validate input
+        if not all([wallet_id, category, points, name]):
+            return jsonify({'error': 'All fields (wallet_id, name, category, points) are required'}), 400
+
+        # Ensure points is an integer
+        try:
+            points = int(points)
+        except ValueError:
+            return jsonify({'error': "'points' must be an integer"}), 400
+
+        # Check if a record already exists for the user, wallet, and category
+        bounty = BountyPoints.query.filter_by(wallet_id=wallet_id, user_id=userId, category=category).first()
+
+        if bounty:
+            # Update existing record
+            bounty.points += points
+            bounty.last_added_points = points
+            bounty.date = datetime.utcnow()
+        else:
+            # Create a new record
+            bounty = BountyPoints(
+                wallet_id=wallet_id,
+                user_id=userId,
+                name=name,  # Ensure 'name' is set
+                category=category,
+                points=points,
+                recommended_points=0,  # Default or calculated value
+                last_added_points=points,
+                date=datetime.utcnow()
+            )
+            db.session.add(bounty)
+
+        # Commit the changes
         db.session.commit()
-        return jsonify({"message": "Bounty points updated successfully"}), 200
-    except SQLAlchemyError as e:
+        return jsonify({'message': 'Bounty points updated successfully'}), 200
+
+    except Exception as e:
+        # Rollback in case of an error
         db.session.rollback()
-        print(f"Database Error: {e}")  # Debugging
-        return jsonify({"message": "An error occurred while updating bounty points"}), 500
+        print(f"Error: {e}")  # Log the error for debugging
+        return jsonify({'error': 'An error occurred while updating bounty points'}), 500
+    
 
 # Fetch bounty points for a user
-@bounty_points_bp.route("/user/<int:userId>/bountypoints", methods=["GET"])
+@user_bp.route("/user/<int:userId>/bountypoints", methods=["GET"])
 @token_required
 def get_bounty_points(userId):
-    
-    bounty_points = BountyPoints.query.filter_by(user_id=userId).first()
+    # Fetch all bounty points for the user
+    bounty_points = BountyPoints.query.filter_by(user_id=userId).all()
 
     if not bounty_points:
-        return jsonify({"message": "Bounty points for the user not found"}), 404
+        return jsonify({"message": "No bounty points found for the user"}), 404
 
-    return jsonify({
-        "id": bounty_points.id,
-        "name": bounty_points.name,
-        "category": bounty_points.category,
-        "points": bounty_points.points,
-        "lastAddedPoints": bounty_points.last_added_points,
-        "recommendedPoints": bounty_points.recommended_points,
-        "date": bounty_points.date.strftime("%d/%m/%Y")
-    }), 200
+    # Return all records for the user
+    result = [
+        {
+            "id": bp.id,
+            "name": bp.name,
+            "wallet_id": bp.wallet_id,
+            "category": bp.category,
+            "points": bp.points,
+            "lastAddedPoints": bp.last_added_points,
+            "recommendedPoints": bp.recommended_points,
+            "date": bp.date.strftime("%d/%m/%Y"),
+        }
+        for bp in bounty_points
+    ]
+
+    return jsonify(result), 200
+
+@user_bp.route("/user/<int:userId>/bountywallet", methods=["GET"])
+@token_required
+def get_bounty_wallet(userId):
+    try:
+        # Query the wallet for the user
+        wallet = BugBountyWallet.query.filter_by(user_id=userId).first()
+
+        if not wallet:
+            return jsonify({"message": "Bug Bounty Wallet not found for the user"}), 404
+
+        # Calculate total points for the wallet from related BountyPoints
+        total_points = db.session.query(db.func.sum(BountyPoints.points)) \
+                                  .filter_by(wallet_id=wallet.id) \
+                                  .scalar() or 0  # Default to 0 if no points
+        total_recommended_points = db.session.query(db.func.sum(BountyPoints.recommended_points)) \
+                                             .filter_by(wallet_id=wallet.id) \
+                                             .scalar() or 0  # Default to 0 if no recommended points
+
+        # Update wallet totals (optional, to keep it in sync)
+        wallet.total_points = total_points
+        wallet.recommended_points = total_recommended_points
+        db.session.commit()
+
+        return jsonify({
+            "wallet_id": wallet.id,
+            "user_id": wallet.user_id,
+            "total_points": wallet.total_points,
+            "recommended_points": wallet.recommended_points,
+            "bounty_details": [
+                {
+                    "category": bp.category,
+                    "points": bp.points,
+                    "last_added_points": bp.last_added_points,
+                    "date": bp.date.strftime("%d/%m/%Y"),
+                }
+                for bp in wallet.bounty_points
+            ],
+        }), 200
+
+    except Exception as e:
+        print(f"Error: {e}")  # Log the error for debugging
+        return jsonify({'error': 'An error occurred while fetching the wallet'}), 500
