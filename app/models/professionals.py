@@ -30,3 +30,29 @@ class Professional(db.Model):
     user_status = db.Column(db.Integer, nullable=False, default=1)
     # New relationship with Schedule
     schedules = db.relationship('Schedule', back_populates='professional', lazy=True)
+    
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "type": self.type,
+            "specialty": self.specialty,
+            "soft_skills": self.soft_skills,
+            "resume": self.resume,
+            "identity": self.identity,
+            "bio": self.bio,
+            "ratings_allowed": self.ratings_allowed,
+            "is_anonymous": self.is_anonymous,
+            "license_number": self.license_number,
+            "years_of_experience": self.years_of_experience,
+            "user_name": self.user_name,
+            "email": self.email,
+            "phone": self.phone,
+            "date_of_birth": self.date_of_birth,
+            "user_gender": self.user_gender,
+            "location": self.location,
+            "email_verified": self.email_verified,
+            "mobile_verified": self.mobile_verified,
+            "term_conditions_signed": self.term_conditions_signed,
+            "sign_up_date": self.sign_up_date,
+            "user_status": self.user_status,
+        }

@@ -149,3 +149,45 @@ def delete_professional(id):
         return jsonify({"message": "Professional account deleted successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
+@professional_bp.route('/signin', methods=['POST'])
+def signin():
+    data = request.get_json()
+    print("data", data)
+    email = data.get('email')
+    phone = data.get('phone')
+    password = data.get('password')
+
+    if not email and not phone:
+        return jsonify({"message": "Either email or phone number must be provided"}), 400
+
+    # Dynamically filter based on email or phone
+    user = None
+    if email:
+        user = Professional.query.filter_by(email=email).first()
+    elif phone:
+        user = Professional.query.filter_by(phone=phone).first()
+
+    if user is None:
+        return jsonify({"message": "User not found"}), 404
+
+    # Check if the provided password is correct
+    if not check_password_hash(user.hashed_password, password):
+        return jsonify({"message": "Invalid password"}), 401
+
+    # Generate JWT token
+    token_data = {
+        'user_id': user.id,
+        'role': "Professional",
+        'exp': datetime.utcnow() + timedelta(seconds=current_app.config['JWT_EXPIRATION_DELTA'])
+    }
+    token = jwt.encode(token_data, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
+
+
+    # Return full user data along with token and bug bounty wallet
+    return jsonify({
+        "message": "Login successful",
+        "token": token,
+        "user": user.to_dict()
+    }), 200
+
