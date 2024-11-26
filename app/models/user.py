@@ -10,6 +10,7 @@ class User(db.Model):
     type = db.Column(db.String(50), nullable=False, default='user')
     subtype = db.Column(db.String(100))
     user_name = db.Column(db.String(100), nullable=False)
+    surname = db.Column(db.String(100), nullable=False)
     email = db.Column(db.String(255), nullable=False, unique=True)
     hashed_password = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(15))
@@ -35,11 +36,19 @@ class User(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
-            "type": self.type,
-            "subtype": self.subtype,
+            "role": self.role,
             "user_name": self.user_name,
             "email": self.email,
             "phone": self.phone,
+            "date_of_birth": self.date_of_birth,
+            "user_gender": self.user_gender,
+            "location": self.location,
+            "email_verified": self.email_verified,
+            "mobile_verified": self.mobile_verified,
+            "term_conditions_signed": self.term_conditions_signed,
+            "is_anonymous": self.is_anonymous,
+            "user_status": self.user_status,
+            "sign_up_date": self.sign_up_date
         }
 
         

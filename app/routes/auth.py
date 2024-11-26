@@ -90,26 +90,22 @@ def signup():
         }
         token = jwt.encode(token_data, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
 
+        # Return full user data
         return jsonify({
             "message": "New registration successful",
-            "user": {
-                "id": new_user.id,
-                "email": new_user.email,
-                "phone": new_user.phone,
-                "role": new_user.role,
-                "bugBountyWallet": {
-                    "totalPoints": bug_bounty_wallet.total_points,
-                    "recommendedPoints": bug_bounty_wallet.recommended_points,
-                    "bountyPoints": [
-                        {
-                            "id": initial_bounty_points.id,
-                            "name": initial_bounty_points.name,
-                            "category": initial_bounty_points.category,
-                            "points": initial_bounty_points.points,
-                            "date": initial_bounty_points.date.strftime("%Y-%m-%d")
-                        }
-                    ]
-                }
+            "user": new_user.to_dict(),  # Return full user object
+            "bugBountyWallet": {
+                "totalPoints": bug_bounty_wallet.total_points,
+                "recommendedPoints": bug_bounty_wallet.recommended_points,
+                "bountyPoints": [
+                    {
+                        "id": initial_bounty_points.id,
+                        "name": initial_bounty_points.name,
+                        "category": initial_bounty_points.category,
+                        "points": initial_bounty_points.points,
+                        "date": initial_bounty_points.date.strftime("%Y-%m-%d")
+                    }
+                ]
             },
             "token": token
         }), 201
@@ -130,14 +126,21 @@ def signin():
     if not email and not phone:
         return jsonify({"message": "Either email or phone number must be provided"}), 400
 
-    user = User.query.filter((User.email == email) | (User.phone == phone)).first()
+    # Dynamically filter based on email or phone
+    user = None
+    if email:
+        user = User.query.filter_by(email=email).first()
+    elif phone:
+        user = User.query.filter_by(phone=phone).first()
 
     if user is None:
         return jsonify({"message": "User not found"}), 404
 
+    # Check if the provided password is correct
     if not user.check_password(password):
         return jsonify({"message": "Invalid password"}), 401
 
+    # Generate JWT token
     token_data = {
         'user_id': user.id,
         'role': user.role,
@@ -145,10 +148,33 @@ def signin():
     }
     token = jwt.encode(token_data, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
 
+    # Retrieve the bug bounty wallet and points
+    bug_bounty_wallet = BugBountyWallet.query.filter_by(user_id=user.id).first()
+
+    if not bug_bounty_wallet:
+        return jsonify({"message": "User does not have a bounty wallet"}), 404
+
+    # Format bounty points
+    bounty_points = [
+        {
+            "id": point.id,
+            "name": point.name,
+            "category": point.category,
+            "points": point.points,
+            "date": point.date.strftime("%Y-%m-%d")
+        } for point in bug_bounty_wallet.bounty_points
+    ]
+
+    # Return full user data along with token and bug bounty wallet
     return jsonify({
         "message": "Login successful",
         "token": token,
-        "user_id":user.id
+        "user": user.to_dict(),  # Ensure User model has a `to_dict` method for full user data
+        "bugBountyWallet": {
+            "totalPoints": bug_bounty_wallet.total_points,
+            "recommendedPoints": bug_bounty_wallet.recommended_points,
+            "bountyPoints": bounty_points
+        }
     }), 200
 
 @auth_bp.route('/mobile-otp', methods=['POST'])
@@ -312,26 +338,42 @@ def verify_email_otp():
     otp_code = data.get('otp')
     user_id = data.get("user_id")
 
+    # Validate input data
     if not transaction_id or not otp_code:
         return jsonify({"message": "Transaction ID and OTP are required"}), 400
 
+    # Find OTP entry by transaction ID
     otp_entry = OTP.query.filter_by(transaction_id=transaction_id).first()
 
     if not otp_entry:
         return jsonify({"message": "Invalid transaction ID"}), 404
 
-    if otp_entry.otp == otp_code and datetime.utcnow() < otp_entry.expires_at:
-        user = User.query.get(user_id)
-        # if user:
-        #     user.email = otp_entry.email
-        #     db.session.commit()
+    # Check OTP code and expiry date
+    if otp_entry.otp != otp_code:
+        return jsonify({"message": "Invalid OTP"}), 400
 
+    if datetime.utcnow() >= otp_entry.expires_at:
+        return jsonify({"message": "OTP has expired"}), 400
+
+    # OTP is valid, now update user information
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    # Update the user's email with the OTP email
+    user.email = otp_entry.email
+
+    # Commit the changes to the database
+    try:
+        db.session.commit()
         return jsonify({
             "message": "OTP verification successful",
             "user": user.to_dict()
         }), 200
-    else:
-        return jsonify({"message": "OTP verification failed or expired"}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error updating user", "error": str(e)}), 500
     
 @auth_bp.route('/user/<int:user_id>/bountypoints', methods=['POST'])
 def add_bounty_points(user_id):

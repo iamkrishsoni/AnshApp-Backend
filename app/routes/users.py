@@ -13,12 +13,12 @@ bounty_points_bp = Blueprint('bounty_points', __name__)
 class UserProfileSchema(Schema):
     user_id = fields.String(required=True)
     role = fields.String(required=True)
-    name = fields.String(required=True)
+    user_name = fields.String(required=True)
     surname = fields.String(required=True)
     email = fields.Email(required=True)
     phone = fields.String(allow_none=True, validate=validate.Length(min=10, max=15))
     dateOfBirth = fields.String(required=True)
-    gender = fields.String(required=True)
+    user_gender = fields.String(required=True)
     location = fields.String(required=True)
 
 user_schema = UserProfileSchema()
@@ -50,12 +50,12 @@ def update_user(userid):
             new_phone = None
 
     # Update user attributes
-    user.name = data.get("name", user.name)
+    user.user_name = data.get("user_name", user.user_name)
     user.surname = data.get("surname", user.surname)
     user.email = data.get("email", user.email)
     user.phone = new_phone
     user.date_of_birth = data.get("dateOfBirth", user.date_of_birth)
-    user.gender = data.get("gender", user.gender)
+    user.user_gender = data.get("user_gender", user.user_gender)
     user.location = data.get("location", user.location)
 
     try:
@@ -173,7 +173,6 @@ def get_bounty_points(userId):
     return jsonify(result), 200
 
 @user_bp.route("/user/<int:userId>/bountywallet", methods=["GET"])
-@token_required
 def get_bounty_wallet(userId):
     try:
         # Query the wallet for the user
