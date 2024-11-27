@@ -60,7 +60,31 @@ def update_user(userid):
 
     try:
         db.session.commit()
-        return jsonify({"message": "User updated successfully"}), 200
+
+        # Fetch associated wallet and bounty points
+        bug_bounty_wallet = BugBountyWallet.query.filter_by(user_id=user.id).first()
+        bounty_points = [
+            {
+                "id": point.id,
+                "name": point.name,
+                "category": point.category,
+                "points": point.points,
+                "date": point.date.strftime("%Y-%m-%d")
+            }
+            for point in bug_bounty_wallet.bounty_points
+        ] if bug_bounty_wallet else []
+
+        # Return updated user data in the required format
+        return jsonify({
+            "message": "User updated successfully",
+            "user": user.to_dict(),  # Convert user object to dictionary
+            "bugBountyWallet": {
+                "totalPoints": bug_bounty_wallet.total_points if bug_bounty_wallet else 0,
+                "recommendedPoints": bug_bounty_wallet.recommended_points if bug_bounty_wallet else 0,
+                "bountyPoints": bounty_points
+            }
+        }), 200
+
     except SQLAlchemyError as e:
         db.session.rollback()
         print(f"Database Error: {e}")  # Log the error for debugging
