@@ -187,6 +187,13 @@ def mobile_otp():
     if not phone or not user_id:
         return jsonify({"message": "Phone number and user_id are required"}), 400
 
+    # Check if the user ID exists in either the User or Professional table
+    user = User.query.get(user_id)
+    professional = Professional.query.get(user_id)
+
+    if not user and not professional:
+        return jsonify({"message": "User not found"}), 404
+
     otp_code = OTP.generate_otp()
     transaction_id = OTP.generate_transaction_id()
     expires_at = datetime.utcnow() + timedelta(minutes=5)  # OTP valid for 5 minutes
@@ -194,7 +201,7 @@ def mobile_otp():
     token_user_id = request.user_data.get('user_id')
     if token_user_id != user_id:
         return jsonify({"message": "Authentication error: User ID mismatch"}), 403
-    
+
     new_otp = OTP(
         user_id=user_id,
         phone=phone,
@@ -206,7 +213,7 @@ def mobile_otp():
     db.session.commit()
 
     return jsonify({
-        "otp":otp_code,
+        "otp": otp_code,
         "message": "OTP sent successfully",
         "transaction_id": transaction_id,
         "status": "OTP sent successfully"
@@ -261,10 +268,17 @@ def verify_mobile_otp():
 
     if otp_entry.otp == otp_code and datetime.utcnow() < otp_entry.expires_at:
         user = User.query.get(user_id)
-        # if user:
-        #     user.phone = otp_entry.phone  
-        #     db.session.commit()
-        return jsonify({"message": "OTP verification successful"}), 200
+        professional = Professional.query.get(user_id)
+        if user:
+            user.mobile_verified = True
+            db.session.commit()
+            return jsonify({"message": "OTP verification successful"}), 200
+        elif professional:
+            professional.mobile_verified = True
+            db.session.commit()
+            return jsonify({"message": "OTP verification successful for Professional"}), 200
+        else:
+            return jsonify({"message": "User not found"}), 40
     else:
         return jsonify({"message": "OTP verification failed or expired"}), 400
 
@@ -276,12 +290,21 @@ def email_otp():
     user_id = data.get('user_id')
 
     if not email or not user_id:
-        return jsonify({"message": "Email Id and user_id are required"}), 400
+        return jsonify({"message": "Email and user_id are required"}), 400
 
+    # Check if the user exists in User or Professional tables
+    user = User.query.get(user_id)
+    professional = Professional.query.get(user_id)
+
+    if not user and not professional:
+        return jsonify({"message": "User not found"}), 404
+
+    # Generate OTP and transaction ID
     otp_code = OTP.generate_otp()
     transaction_id = OTP.generate_transaction_id()
-    expires_at = datetime.utcnow() + timedelta(minutes=5)  
+    expires_at = datetime.utcnow() + timedelta(minutes=5)  # OTP valid for 5 minutes
 
+    # Create a new OTP entry
     new_otp = OTP(
         user_id=user_id,
         email=email,
@@ -292,8 +315,9 @@ def email_otp():
     db.session.add(new_otp)
     db.session.commit()
 
+    # Return the OTP response
     return jsonify({
-        "otp":otp_code,
+        "otp": otp_code,
         "message": "OTP sent successfully",
         "transaction_id": transaction_id,
         "status": "OTP sent successfully"
@@ -339,8 +363,8 @@ def verify_email_otp():
     user_id = data.get("user_id")
 
     # Validate input data
-    if not transaction_id or not otp_code:
-        return jsonify({"message": "Transaction ID and OTP are required"}), 400
+    if not transaction_id or not otp_code or not user_id:
+        return jsonify({"message": "Transaction ID, OTP, and user_id are required"}), 400
 
     # Find OTP entry by transaction ID
     otp_entry = OTP.query.filter_by(transaction_id=transaction_id).first()
@@ -355,26 +379,32 @@ def verify_email_otp():
     if datetime.utcnow() >= otp_entry.expires_at:
         return jsonify({"message": "OTP has expired"}), 400
 
-    # OTP is valid, now update user information
+    # Check if the user exists in User or Professional table
     user = User.query.get(user_id)
+    professional = Professional.query.get(user_id)
 
-    if not user:
+    if not user and not professional:
         return jsonify({"message": "User not found"}), 404
 
-    # Update the user's email with the OTP email
-    user.email = otp_entry.email
+    # Update email verification for the corresponding entity
+    if user:
+        user.email = otp_entry.email
+        user.email_verified = True
+    elif professional:
+        professional.email = otp_entry.email
+        professional.email_verified = True
 
     # Commit the changes to the database
     try:
         db.session.commit()
         return jsonify({
             "message": "OTP verification successful",
-            "user": user.to_dict()
+            "status": "Email verified successfully"
         }), 200
     except Exception as e:
         db.session.rollback()
-        return jsonify({"message": "Error updating user", "error": str(e)}), 500
-    
+        return jsonify({"message": "Error updating verification status", "error": str(e)}), 500
+
 @auth_bp.route('/user/<int:user_id>/bountypoints', methods=['POST'])
 def add_bounty_points(user_id):
     data = request.get_json()
@@ -419,7 +449,8 @@ def add_bounty_points(user_id):
 
     return jsonify({
         "message": "Bounty points added successfully",
-        "totalPoints": wallet.total_points,
+        "total_points": wallet.total_points,
+        "wallet_id":wallet.id,
         "bountyPoints": {
             "id": new_bounty_points.id,
             "name": new_bounty_points.name,

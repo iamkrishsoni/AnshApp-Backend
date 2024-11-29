@@ -4,11 +4,13 @@ def register_routes(app):
     from .schedules import schedule_bp
     from .professionals import professional_bp
     from .bountypoints import bounty_bp
+    from .chats import chat_bp
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(user_bp, url_prefix='/user')
     app.register_blueprint(professional_bp, url_prefix='/professional')
     app.register_blueprint(schedule_bp, url_prefix='/schedules')
     app.register_blueprint(bounty_bp, url_prefix='/bounty')
+    app.register_blueprint(chat_bp, url_prefix='/api/v1')
     
 

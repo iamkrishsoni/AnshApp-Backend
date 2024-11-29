@@ -4,3 +4,5 @@ from .bountypoints import BountyPoints
 from .schedule import Schedule
 from .bountywallet import BugBountyWallet
 from .professionals import Professional
+from .chatroom import ChatRoom
+from .chatmessage import ChatMessage

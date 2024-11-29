@@ -59,8 +59,8 @@ def create_professional():
             'exp': datetime.utcnow() + timedelta(seconds=current_app.config['JWT_EXPIRATION_DELTA'])
         }
         token = jwt.encode(token_data, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
-
-        return jsonify({"message": "Professional account created successfully", "id": professional.id, "token": token}), 201
+        professional_data = professional.to_dict()
+        return jsonify({"message": "Professional account created successfully", "id": professional.id, "token": token,"professional": professional_data}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
