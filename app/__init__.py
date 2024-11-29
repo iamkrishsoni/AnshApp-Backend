@@ -7,6 +7,8 @@ from .models import *
 from .routes import register_routes
 from flask_cors import CORS
 
+
+
 def create_app():
     app = Flask(__name__)
     CORS(app)
@@ -16,11 +18,7 @@ def create_app():
     db.init_app(app)
 
     # Set up rate limiter
-    limiter = Limiter(
-        app,
-        key_func=get_remote_address,  # Identify clients by their IP addresses
-        default_limits=["1000 per second"],  # Global rate limit
-    )
+    limiter.init_app(app)
 
     with app.app_context():
         db.create_all()  
