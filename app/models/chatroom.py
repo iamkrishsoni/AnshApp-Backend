@@ -1,4 +1,5 @@
 from ..db import db
+from datetime import datetime
 
 class ChatRoom(db.Model):
     __tablename__ = 'chat_rooms'

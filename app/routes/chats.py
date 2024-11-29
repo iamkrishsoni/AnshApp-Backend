@@ -3,13 +3,15 @@ from ..db import db
 from datetime import datetime
 from ..models import ChatRoom, ChatMessage
 
-chat_bp = Blueprint('bounty',__name__)
+chat_bp = Blueprint('chat',__name__)
 
 @chat_bp.route('/chats', methods=['GET'])
-@token_required
 def get_chats():
-    user_id = request.user_data.get('user_id')  # Authenticated user's ID
-    role = request.user_data.get('role')       # 'user' or 'professional'
+    user_id = request.user_data.get('user_id')  # Ensure this exists
+    role = request.user_data.get('role')        # Ensure this exists
+
+    if not user_id or not role:
+        return jsonify({"message": "User ID and role are required"}), 400
 
     if role == 'user':
         chats = ChatRoom.query.filter_by(user_id=user_id).all()
@@ -33,7 +35,6 @@ def get_chats():
 
 
 @chat_bp.route('/chats/<int:chat_room_id>/message', methods=['POST'])
-@token_required
 def send_message(chat_room_id):
     data = request.get_json()
     sender_id = request.user_data.get('user_id')  # Authenticated user's ID
@@ -93,7 +94,6 @@ def send_message(chat_room_id):
     }), 201
 
 @chat_bp.route('/chats/create', methods=['POST'])
-@token_required
 def create_chat_room():
     data = request.get_json()
     user_id = data.get('user_id')

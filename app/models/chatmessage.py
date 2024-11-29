@@ -1,4 +1,5 @@
 from ..db import db
+from datetime import datetime
 
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'
