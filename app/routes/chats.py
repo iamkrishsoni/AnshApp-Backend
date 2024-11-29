@@ -67,7 +67,30 @@ def send_message(chat_room_id):
     db.session.add(new_message)
     db.session.commit()
 
-    return jsonify({"message": "Message sent successfully"}), 201
+    # Retrieve all messages in the chat room
+    messages = ChatMessage.query.filter_by(chat_room_id=chat_room_id).order_by(ChatMessage.timestamp.asc()).all()
+    messages_list = [
+        {
+            "id": msg.id,
+            "sender_type": msg.sender_type,
+            "sender_id": msg.sender_id,
+            "message_type": msg.message_type,
+            "message_content": msg.message_content,
+            "timestamp": msg.timestamp
+        }
+        for msg in messages
+    ]
+
+    return jsonify({
+        "chat_room": {
+            "id": chat_room.id,
+            "user_id": chat_room.user_id,
+            "professional_id": chat_room.professional_id,
+            "created_at": chat_room.created_at,
+            "messages": messages_list
+        },
+        "message": "Message sent successfully"
+    }), 201
 
 @chat_bp.route('/chats/create', methods=['POST'])
 @token_required
