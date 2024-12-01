@@ -38,6 +38,7 @@ def signup():
         role=role,
         user_name=data.get('user_name', 'Anonymous User'),  # Default to 'Anonymous User' if not provided
         email=email,
+        surname=data.get('surname','No SurName'),
         phone=phone,
         hashed_password=password,  # Will be set later by the password hash function
         date_of_birth=data.get('date_of_birth', ''),  # Default empty string if not provided
