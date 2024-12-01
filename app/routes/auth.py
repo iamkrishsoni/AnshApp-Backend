@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from ..models import OTP, User, BountyPoints, BugBountyWallet
+from ..models import OTP, User, BountyPoints, BugBountyWallet, Professional
 from ..db import db
 import jwt
 from sqlalchemy.exc import SQLAlchemyError
