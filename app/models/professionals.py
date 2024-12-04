@@ -30,6 +30,7 @@ class Professional(db.Model):
     user_status = db.Column(db.Integer, nullable=False, default=1)
     # New relationship with Schedule
     schedules = db.relationship('Schedule', back_populates='professional', lazy=True)
+    # device = db.relationship('Device', back_populates='user', uselist=False)
     
     def to_dict(self):
         return {

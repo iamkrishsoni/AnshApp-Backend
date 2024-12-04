@@ -10,7 +10,7 @@ class Schedule(db.Model):
     professional_id = Column(Integer, ForeignKey('professionals.id'), nullable=False)
     user_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     user_name = Column(String, nullable=True)
-    slot_id = Column(Integer, nullable=False)
+    slot_id = Column(String, nullable=False)
     start_time = Column(DateTime, nullable=False)
     end_time = Column(DateTime, nullable=False)
     date = Column(DateTime, nullable=False)

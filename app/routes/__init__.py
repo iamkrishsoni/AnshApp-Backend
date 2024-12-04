@@ -5,10 +5,7 @@ def register_routes(app):
     from .professionals import professional_bp
     from .bountypoints import bounty_bp
     from .chats import chat_bp
-<<<<<<< HEAD
-=======
     from .affirmations import affirmation_bp
->>>>>>> 45076d3 (affirmation)
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(user_bp, url_prefix='/user')
@@ -16,9 +13,6 @@ def register_routes(app):
     app.register_blueprint(schedule_bp, url_prefix='/schedules')
     app.register_blueprint(bounty_bp, url_prefix='/bounty')
     app.register_blueprint(chat_bp, url_prefix='/api/v1')
-<<<<<<< HEAD
-=======
     app.register_blueprint(affirmation_bp, url_prefix = '/affirmation')
->>>>>>> 45076d3 (affirmation)
     
 

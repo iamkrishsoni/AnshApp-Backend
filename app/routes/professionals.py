@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 from ..models import Professional, BountyPoints
 from ..db import db
 from ..utils import token_required  
@@ -37,11 +37,7 @@ def create_professional():
             years_of_experience=data.get('yearsOfExperience', 0),
             user_name=data['userName'],
             email=data['email'],
-<<<<<<< HEAD
-            hashed_password=data['hashedPassword'],
-=======
             hashed_password=data['password'],
->>>>>>> 45076d3 (affirmation)
             phone=data.get('phone'),
             date_of_birth=data.get('dateOfBirth'),
             user_gender=data.get('userGender'),
@@ -66,6 +62,7 @@ def create_professional():
         professional_data = professional.to_dict()
         return jsonify({"message": "Professional account created successfully", "id": professional.id, "token": token,"professional": professional_data}), 201
     except Exception as e:
+        print(str(e))
         return jsonify({"error": str(e)}), 400
 
 
@@ -176,7 +173,7 @@ def signin():
         return jsonify({"message": "User not found"}), 404
 
     # Check if the provided password is correct
-    if not check_password_hash(user.hashed_password, password):
+    if user.hashed_password != password:
         return jsonify({"message": "Invalid password"}), 401
 
     # Generate JWT token

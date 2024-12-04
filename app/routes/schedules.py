@@ -18,6 +18,7 @@ def create_schedule():
     start_time = data.get('startTime')
     end_time = data.get('endTime')
     date = data.get('date')
+    status = data.get('status')
 
     if not all([professional_id, slot_id, start_time, end_time, date]):
         return jsonify({"message": "All fields (professionalId, slotId, startTime, endTime, date) are required"}), 400
@@ -48,7 +49,7 @@ def create_schedule():
         message_by_user=data.get('messageByUser', None),
         reminder_activated=data.get('reminderActivated', False),
         anonymous=data.get('anonymous', False),
-        status=data.get('status', 'active'),
+        status=data.get('status', 'open'),
         schedule_type=data.get('scheduleType', "Active"),
         user_attended=data.get('userAttended', False),
         professional_attended=data.get('professionalAttended', False)

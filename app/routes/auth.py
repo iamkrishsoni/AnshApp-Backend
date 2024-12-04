@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from ..models import OTP, User, BountyPoints, BugBountyWallet, Professional
+from ..models import OTP, User, BountyPoints, BugBountyWallet, Professional, ExpiredToken, Device
 from ..db import db
 import jwt
 from sqlalchemy.exc import SQLAlchemyError
@@ -462,5 +462,80 @@ def add_bounty_points(user_id):
     }), 200
 # Update bounty points
 
+@auth_bp.route('/signout', methods=['POST'])
+def signout():
+    # Extract the token from the request header
+    token = request.headers.get('Authorization')
+    
+    if not token:
+        raise Unauthorized("Token is missing.")
+    
+    try:
+        # Decode the JWT token
+        decoded_token = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+        user_id = decoded_token['user_id']  # Assuming the token has 'user_id' as a claim
+        
+        # Add the expired token to the database
+        expired_token = ExpiredToken(token=token, expiration_date=datetime.utcnow())
+        db.session.add(expired_token)
+        db.session.commit()
+        
+        # Optionally, invalidate the token here by adding to a blacklist (e.g., in-memory or database)
+        # If you are using a library to handle JWT blacklist, add the token to that blacklist
+        
+        return jsonify({"message": "Successfully signed out"}), 200
+    
+    except jwt.ExpiredSignatureError:
+        return jsonify({"message": "Token has already expired."}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"message": "Invalid token."}), 401
+    
+@auth_bp.route('/device', methods=['POST'])
+def store_device():
+    data = request.get_json()
+
+    # Validate incoming data
+    required_fields = ['role', 'user_id', 'device_name', 'device_model', 'device_os', 'device_os_version', 'device_id']
+    
+    for field in required_fields:
+        if field not in data:
+            return jsonify({'message': f'{field} is required'}), 400
+
+    # Determine the model based on the role
+    if data['role'] == 'user':
+        entity = User.query.get(data['user_id'])
+    elif data['role'] == 'professional':
+        entity = Professional.query.get(data['user_id'])
+    else:
+        return jsonify({'message': 'Invalid role'}), 400
+
+    if not entity:
+        return jsonify({'message': f'{data["role"].capitalize()} not found'}), 404
+
+    try:
+        # Create a new Device object
+        device = Device(
+            user_id=entity.id,
+            device_name=data['device_name'],
+            device_model=data['device_model'],
+            device_os=data['device_os'],
+            device_os_version=data['device_os_version'],
+            device_id=data['device_id'],  # Device unique ID
+            fcm_token=data.get('fcm_token', None),  # Optional FCM token
+            device_manufacturer=data.get('device_manufacturer', None),
+            device_screen_size=data.get('device_screen_size', None),
+            device_resolution=data.get('device_resolution', None)
+        )
+
+        entity.device = device
+
+        db.session.add(device)
+        db.session.commit()
+
+        return jsonify({'message': 'Device details stored successfully'}), 201
+
+    except Exception as e:
+        return jsonify({'message': str(e)}), 500
+    
 def register_routes(app):
     app.register_blueprint(auth_bp)

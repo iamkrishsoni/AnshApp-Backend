@@ -23,15 +23,13 @@ class User(db.Model):
     is_anonymous = db.Column(db.String(10), default='no')
     user_status = db.Column(db.Integer, nullable=False, default=1)
     sign_up_date = db.Column(db.String(50))
-<<<<<<< HEAD
-=======
     permanent_affirmation = db.relationship('PermanentAffirmation', back_populates='user', uselist=False)
     daily_affirmations = db.relationship('DailyAffirmation', back_populates='user')
->>>>>>> 45076d3 (affirmation)
 
     # Relationship to BugBountyWallet
     bug_bounty_wallet = db.relationship('BugBountyWallet', back_populates='user', uselist=False)
     schedules = db.relationship('Schedule', back_populates='user', lazy=True)
+    device = db.relationship('Device', back_populates='user', uselist=False)
     def set_password(self, password):
         self.hashed_password = generate_password_hash(password)
 
@@ -53,7 +51,8 @@ class User(db.Model):
             "term_conditions_signed": self.term_conditions_signed,
             "is_anonymous": self.is_anonymous,
             "user_status": self.user_status,
-            "sign_up_date": self.sign_up_date
+            "sign_up_date": self.sign_up_date,
+            "device": self.device.to_dict() if self.device else None
         }
 
         
