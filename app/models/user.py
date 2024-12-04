@@ -23,6 +23,11 @@ class User(db.Model):
     is_anonymous = db.Column(db.String(10), default='no')
     user_status = db.Column(db.Integer, nullable=False, default=1)
     sign_up_date = db.Column(db.String(50))
+<<<<<<< HEAD
+=======
+    permanent_affirmation = db.relationship('PermanentAffirmation', back_populates='user', uselist=False)
+    daily_affirmations = db.relationship('DailyAffirmation', back_populates='user')
+>>>>>>> 45076d3 (affirmation)
 
     # Relationship to BugBountyWallet
     bug_bounty_wallet = db.relationship('BugBountyWallet', back_populates='user', uselist=False)

@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+=======
+
+>>>>>>> 45076d3 (affirmation)
 from flask import Flask
 from .config import Config
 from .db import db
@@ -17,9 +21,12 @@ def create_app():
     # Initialize database
     db.init_app(app)
 
+<<<<<<< HEAD
     # Initialize rate limiter
     limiter = Limiter(get_remote_address, app=app)
 
+=======
+>>>>>>> 45076d3 (affirmation)
     # Ensure the tables are created at the start (in app context)
     with app.app_context():
         db.create_all()

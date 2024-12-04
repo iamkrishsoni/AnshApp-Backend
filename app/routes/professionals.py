@@ -37,7 +37,11 @@ def create_professional():
             years_of_experience=data.get('yearsOfExperience', 0),
             user_name=data['userName'],
             email=data['email'],
+<<<<<<< HEAD
             hashed_password=data['hashedPassword'],
+=======
+            hashed_password=data['password'],
+>>>>>>> 45076d3 (affirmation)
             phone=data.get('phone'),
             date_of_birth=data.get('dateOfBirth'),
             user_gender=data.get('userGender'),
