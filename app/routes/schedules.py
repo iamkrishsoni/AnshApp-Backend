@@ -5,7 +5,7 @@ from ..db import db
 from ..utils import token_required  
 from sqlalchemy.exc import SQLAlchemyError
 from marshmallow import Schema, fields, validate
-from datetime import datetime
+from datetime import datetime, timedelta
 
 schedule_bp = Blueprint('schedules', __name__)
 @schedule_bp.route('/create', methods=['POST'])
@@ -68,6 +68,60 @@ def create_schedule():
             "date": schedule.date.strftime('%Y-%m-%d')
         }
     }), 201
+
+
+@schedule_bp.route('/getall', methods=['GET'])
+@token_required
+def get_all_open_schedules():
+    try:
+        # Get the current datetime
+        current_time = datetime.utcnow()
+
+        # Query schedules with status 'open' and start_time > current time
+        schedules = Schedule.query.filter(
+            Schedule.status == 'open',
+            Schedule.start_time > current_time
+        ).all()
+
+        if not schedules:
+            return jsonify({"message": "No open schedules found"}), 404
+
+        # Serialize the schedules including Professional details
+        schedules_data = [
+            {
+                "id": schedule.id,
+                "professionalId": schedule.professional_id,
+                "userId": schedule.user_id,
+                "userName": schedule.user_name,
+                "slotId": schedule.slot_id,
+                "startTime": schedule.start_time.strftime('%Y-%m-%dT%H:%M:%S'),
+                "endTime": schedule.end_time.strftime('%Y-%m-%dT%H:%M:%S'),
+                "date": schedule.date.strftime('%Y-%m-%d'),
+                "userLookingFor": schedule.user_looking_for,
+                "messageByUser": schedule.message_by_user,
+                "reminderActivated": schedule.reminder_activated,
+                "anonymous": schedule.anonymous,
+                "status": schedule.status,
+                "scheduleType": schedule.schedule_type,
+                "userAttended": schedule.user_attended,
+                "professionalAttended": schedule.professional_attended,
+                # Professional details
+                "professionalDetails": {
+                    "id": schedule.professional.id,
+                    "name": schedule.professional.user_name,
+                    "email": schedule.professional.email,
+                    "phone": schedule.professional.phone,
+                    "specialization": schedule.professional.specialty,
+                } if schedule.professional else None,
+            }
+            for schedule in schedules
+        ]
+
+        return jsonify(schedules_data), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "An error occurred while fetching schedules", "error": str(e)}), 500
 
 @schedule_bp.route('/update/<int:schedule_id>', methods=['PUT'])
 @token_required
@@ -156,11 +210,19 @@ def delete_schedule(schedule_id):
 @schedule_bp.route('/user/<int:user_id>/schedules', methods=['GET'])
 @token_required
 def get_schedules_for_user(user_id):
-    schedules = Schedule.query.filter_by(user_id=user_id).all()
-    if not schedules:
-        return jsonify({"message": "No schedules found for this user"}), 404
+    # Get the current time
+    current_time = datetime.now()
 
-    return jsonify([
+    # Query the schedules, filter for schedules after the current time
+    schedules = Schedule.query.filter(
+        Schedule.user_id == user_id,
+        Schedule.start_time > current_time  # Only get schedules that start after the current time
+    ).all()  # Assuming Schedule has a relationship with Professional
+
+    if not schedules:
+        return jsonify({"message": "No upcoming schedules found for this user"}), 404
+
+    schedules_data = [
         {
             "id": schedule.id,
             "professionalId": schedule.professional_id,
@@ -175,9 +237,22 @@ def get_schedules_for_user(user_id):
             "reminderActivated": schedule.reminder_activated,
             "anonymous": schedule.anonymous,
             "status": schedule.status,
-            "scheduleType": schedule.schedule_type
-        } for schedule in schedules
-    ]), 200
+            "scheduleType": schedule.schedule_type,
+            "userAttended": schedule.user_attended,
+            "professionalAttended": schedule.professional_attended,
+            # Professional details
+            "professionalDetails": {
+                "id": schedule.professional.id,
+                "name": schedule.professional.user_name,
+                "email": schedule.professional.email,
+                "phone": schedule.professional.phone,
+                "specialization": schedule.professional.specialty,
+            } if schedule.professional else None,
+        }
+        for schedule in schedules
+    ]
+    return jsonify(schedules_data), 200
+    
     
 # get all schedules for any specific professional
 @schedule_bp.route('/professional/<int:professional_id>/schedules', methods=['GET'])
