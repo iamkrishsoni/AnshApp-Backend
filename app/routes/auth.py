@@ -17,7 +17,7 @@ def signup():
     print("Data in signup request:", data)
 
     role = data.get('role')
-    email = data.get('email') or "noemail@gmail.com"
+    email = data.get('email') or f"noemail{str(datetime.utcnow().timestamp())}@gmail.com"
     phone = data.get('phone')
     password = data.get('password')
     print("Password is here:", password)
