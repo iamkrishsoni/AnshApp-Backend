@@ -17,7 +17,7 @@ def signup():
     print("Data in signup request:", data)
 
     role = data.get('role')
-    email = data.get('email')
+    email = data.get('email') or "noemail@gmail.com"
     phone = data.get('phone')
     password = data.get('password')
     print("Password is here:", password)
@@ -465,31 +465,35 @@ def add_bounty_points(user_id):
 @auth_bp.route('/signout', methods=['POST'])
 def signout():
     # Extract the token from the request header
-    token = request.headers.get('Authorization')
+    token = request.headers['Authorization'].split(" ")[1]
+    print("Received token:", token)
+    # if token and token.startswith("Bearer "):
+    #     token = token.split(" ")[1]
     
     if not token:
-        raise Unauthorized("Token is missing.")
-    
+        return jsonify({"message": "Token is missing."}), 401
+
     try:
         # Decode the JWT token
-        decoded_token = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
-        user_id = decoded_token['user_id']  # Assuming the token has 'user_id' as a claim
+        decoded_token = jwt.decode(token, current_app.config['JWT_SECRET_KEY'], algorithms=["HS256"])
+        user_id = decoded_token.get('user_id')  # Assuming 'user_id' is in the token payload
         
-        # Add the expired token to the database
+        # Check if token is already blacklisted
+        # if is_token_blacklisted(token):
+        #     return jsonify({"message": "Token is already invalidated."}), 401
+
+        # Add the token to the blacklist
         expired_token = ExpiredToken(token=token, expiration_date=datetime.utcnow())
         db.session.add(expired_token)
         db.session.commit()
-        
-        # Optionally, invalidate the token here by adding to a blacklist (e.g., in-memory or database)
-        # If you are using a library to handle JWT blacklist, add the token to that blacklist
-        
+
         return jsonify({"message": "Successfully signed out"}), 200
-    
+
     except jwt.ExpiredSignatureError:
         return jsonify({"message": "Token has already expired."}), 401
     except jwt.InvalidTokenError:
         return jsonify({"message": "Invalid token."}), 401
-    
+
 @auth_bp.route('/device', methods=['POST'])
 def store_device():
     data = request.get_json()

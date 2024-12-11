@@ -6,6 +6,7 @@ def register_routes(app):
     from .bountypoints import bounty_bp
     from .chats import chat_bp
     from .affirmations import affirmation_bp
+    from .reminder_routes import reminder_routes
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(user_bp, url_prefix='/user')

@@ -6,6 +6,7 @@ from ..utils import token_required
 from sqlalchemy.exc import SQLAlchemyError
 from marshmallow import Schema, fields, validate
 from datetime import datetime, timedelta
+from sqlalchemy import cast, DateTime
 
 schedule_bp = Blueprint('schedules', __name__)
 @schedule_bp.route('/create', methods=['POST'])
@@ -212,13 +213,15 @@ def delete_schedule(schedule_id):
 def get_schedules_for_user(user_id):
     # Get the current time
     current_time = datetime.now()
+    print(user_id)
+    print(current_time)
 
     # Query the schedules, filter for schedules after the current time
     schedules = Schedule.query.filter(
         Schedule.user_id == user_id,
-        Schedule.start_time > current_time  # Only get schedules that start after the current time
     ).all()  # Assuming Schedule has a relationship with Professional
-
+        # cast(Schedule.start_time, DateTime) > current_time
+    print(schedules)
     if not schedules:
         return jsonify({"message": "No upcoming schedules found for this user"}), 404
 

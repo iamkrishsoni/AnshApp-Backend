@@ -11,7 +11,7 @@ class User(db.Model):
     subtype = db.Column(db.String(100))
     user_name = db.Column(db.String(100), nullable=False)
     surname = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(255), nullable=False, unique=True)
+    email = db.Column(db.String(255), unique=True, nullable=False)
     hashed_password = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(15))
     date_of_birth = db.Column(db.String(10))
@@ -28,7 +28,7 @@ class User(db.Model):
 
     # Relationship to BugBountyWallet
     bug_bounty_wallet = db.relationship('BugBountyWallet', back_populates='user', uselist=False)
-    schedules = db.relationship('Schedule', back_populates='user', lazy=True)
+    schedules = db.relationship('Schedule', back_populates='user')
     device = db.relationship('Device', back_populates='user', uselist=False)
     def set_password(self, password):
         self.hashed_password = generate_password_hash(password)
