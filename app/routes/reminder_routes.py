@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
-from ..models.reminder import Reminder
+from ..models import Reminder
 from ..db import db
-from ..services.reminder_service import schedule_reminder_notifications
+from ..services import schedule_reminder_notifications
 
 reminder_routes = Blueprint('reminder_routes', __name__)
 

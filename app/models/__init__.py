@@ -10,3 +10,4 @@ from .affirmation import DailyAffirmation
 from .permanentAffirmation import PermanentAffirmation
 from .expiredtoken import ExpiredToken
 from .device import Device
+from .reminder import Reminder

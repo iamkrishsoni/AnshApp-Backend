@@ -25,7 +25,7 @@ class User(db.Model):
     sign_up_date = db.Column(db.String(50))
     permanent_affirmation = db.relationship('PermanentAffirmation', back_populates='user', uselist=False)
     daily_affirmations = db.relationship('DailyAffirmation', back_populates='user')
-
+    reminders = db.relationship('Reminder', back_populates='user')
     # Relationship to BugBountyWallet
     bug_bounty_wallet = db.relationship('BugBountyWallet', back_populates='user', uselist=False)
     schedules = db.relationship('Schedule', back_populates='user')
