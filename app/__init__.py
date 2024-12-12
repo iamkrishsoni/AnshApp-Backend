@@ -3,7 +3,6 @@ from flask import Flask
 from .config import Config
 from .db import db
 from .models import *
-from .routes import register_routes
 from flask_cors import CORS
 
 def create_app():
@@ -23,6 +22,7 @@ def create_app():
         db.create_all()
 
     # Register the routes
+    from .routes import register_routes
     register_routes(app)
 
     return app

@@ -1,5 +1,6 @@
 from ..db import db
 from sqlalchemy.orm import relationship
+from datetime import date
 from werkzeug.security import generate_password_hash, check_password_hash
 
 class Professional(db.Model):
@@ -20,7 +21,7 @@ class Professional(db.Model):
     email = db.Column(db.String(255), nullable=False, unique=True)
     hashed_password = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(15))
-    date_of_birth = db.Column(db.String(10))
+    date_of_birth = db.Column(db.Date)
     user_gender = db.Column(db.String(10))
     location = db.Column(db.String(255))
     email_verified = db.Column(db.Boolean, default=False)

@@ -129,17 +129,17 @@ def get_all_open_schedules():
 def update_schedule(schedule_id):
     data = request.get_json()
     
-    # Find the schedule
+    # Find the schedule by ID
     schedule = Schedule.query.get(schedule_id)
     if not schedule:
         return jsonify({"message": "Schedule not found"}), 404
 
-    # Update the fields if they exist in the request body
-    schedule.user_id = data.get('userId', schedule.user_id)
-    schedule.user_name = data.get('userName', schedule.user_name)
-    schedule.user_looking_for = data.get('userLookingFor', schedule.user_looking_for)
-    schedule.message_by_user = data.get('messageByUser', schedule.message_by_user)
-    schedule.reminder_activated = data.get('reminderActivated', schedule.reminder_activated)
+    # Update fields with values from the request
+    schedule.user_id = data.get('user_id', schedule.user_id)
+    schedule.user_name = data.get('user_name', schedule.user_name)
+    schedule.user_looking_for = data.get('user_looking_for', schedule.user_looking_for)
+    schedule.message_by_user = data.get('message_by_user', schedule.message_by_user)
+    schedule.reminder_activated = data.get('reminder_activated', schedule.reminder_activated)
     schedule.anonymous = data.get('anonymous', schedule.anonymous)
     schedule.start_time = datetime.strptime(data.get('startTime'), '%Y-%m-%dT%H:%M:%S') if data.get('startTime') else schedule.start_time
     schedule.end_time = datetime.strptime(data.get('endTime'), '%Y-%m-%dT%H:%M:%S') if data.get('endTime') else schedule.end_time
@@ -150,23 +150,24 @@ def update_schedule(schedule_id):
     if schedule.status == 'attended':
         schedule.user_attended = data.get('userAttended', schedule.user_attended)
         schedule.professional_attended = data.get('professionalAttended', schedule.professional_attended)
+
     # Commit the changes
     db.session.commit()
 
+    # Return updated schedule
     return jsonify({
         "message": "Schedule updated successfully",
         "schedule": {
             "id": schedule.id,
-            "professionalId": schedule.professional_id,
             "userId": schedule.user_id,
-            "userName": schedule.user_name,
-            "userLookingFor": schedule.user_looking_for,
-            "messageByUser": schedule.message_by_user,
+            "userName": schedule.user_name or "Default Name",
+            "userLookingFor": schedule.user_looking_for or "",
+            "messageByUser": schedule.message_by_user or "",
             "reminderActivated": schedule.reminder_activated,
             "anonymous": schedule.anonymous,
-            "startTime": schedule.start_time.strftime('%Y-%m-%dT%H:%M:%S'),
-            "endTime": schedule.end_time.strftime('%Y-%m-%dT%H:%M:%S'),
-            "date": schedule.date.strftime('%Y-%m-%d'),
+            "startTime": schedule.start_time.strftime('%Y-%m-%dT%H:%M:%S') if schedule.start_time else "",
+            "endTime": schedule.end_time.strftime('%Y-%m-%dT%H:%M:%S') if schedule.end_time else "",
+            "date": schedule.date.strftime('%Y-%m-%d') if schedule.date else "",
             "status": schedule.status,
             "scheduleType": schedule.schedule_type
         }
