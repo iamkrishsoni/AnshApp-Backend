@@ -111,6 +111,7 @@ def get_all_open_schedules():
                     "id": schedule.professional.id,
                     "name": schedule.professional.user_name,
                     "email": schedule.professional.email,
+                    "type":schedule.professional.type,
                     "phone": schedule.professional.phone,
                     "specialization": schedule.professional.specialty,
                 } if schedule.professional else None,
@@ -250,6 +251,7 @@ def get_schedules_for_user(user_id):
                 "name": schedule.professional.user_name,
                 "email": schedule.professional.email,
                 "phone": schedule.professional.phone,
+                "type":schedule.professional.type,
                 "specialization": schedule.professional.specialty,
             } if schedule.professional else None,
         }
