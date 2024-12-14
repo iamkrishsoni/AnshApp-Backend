@@ -216,9 +216,9 @@ def forgetPassword():
         return jsonify({"message": "User not found"}), 404
 
     # Check if the professional's type matches the role
-    if role == 'ComfortBuddy' and user.type != 'comfortbuddy':
+    if role == 'ComfortBuddy' and user.type != 'ComfortBuddy':
         return jsonify({"message": "Unauthorized access, invalid professional type"}), 403
-    elif role == 'Psychologist' and user.type != 'psychologist':
+    elif role == 'Psychologist' and user.type != 'Psychologist':
         return jsonify({"message": "Unauthorized access, invalid professional type"}), 403
 
     # Return full user data along with the password
