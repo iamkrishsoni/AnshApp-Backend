@@ -178,6 +178,55 @@ def signin():
         }
     }), 200
 
+
+@auth_bp.route('/forgot-password', methods=['POST'])
+def forgetPassword():
+    data = request.get_json()
+    print("data", data)
+    
+    # Extract fields from the request
+    role = data.get('role')
+    email = data.get('email')
+    phone = data.get('phone')
+
+    # Validate input
+    if not role:
+        return jsonify({"message": "Role must be provided"}), 400
+    if not email and not phone:
+        return jsonify({"message": "Either email or phone number must be provided"}), 400
+
+    # Define the target model based on the role
+    target_model = None
+    if role == 'User':
+        target_model = User
+    elif role == 'ComfortBuddy' or role == 'Psychologist':
+        target_model = Professional
+    else:
+        return jsonify({"message": "Invalid role provided"}), 400
+
+    # Dynamically filter user based on email or phone
+    user = None
+    if email:
+        user = target_model.query.filter_by(email=email).first()
+    elif phone:
+        user = target_model.query.filter_by(phone=phone).first()
+
+    # Handle user not found
+    if user is None:
+        return jsonify({"message": "User not found"}), 404
+
+    # Check if the professional's type matches the role
+    if role == 'ComfortBuddy' and user.type != 'comfortbuddy':
+        return jsonify({"message": "Unauthorized access, invalid professional type"}), 403
+    elif role == 'Psychologist' and user.type != 'psychologist':
+        return jsonify({"message": "Unauthorized access, invalid professional type"}), 403
+
+    # Return full user data along with the password
+    return jsonify({
+        "message": "User found",  # Ensure User or Professional model has a `to_dict` method
+        "password": user.hashed_password,  # Include the password in the response
+    }), 200
+
 @auth_bp.route('/mobile-otp', methods=['POST'])
 @token_required
 def mobile_otp():
