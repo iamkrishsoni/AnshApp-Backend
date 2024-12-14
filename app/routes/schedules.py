@@ -287,28 +287,36 @@ def get_schedules_for_professional(professional_id):
         } for schedule in schedules
     ]), 200
 
-@schedule_bp.route('/stats/last-week', methods=['GET'])
+@schedule_bp.route('/stats/lastweek', methods=['GET'])
 @token_required
 def get_last_week_statistics():
+    professional_id = request.args.get('professional_id')  # Extract `professional_id` from query params
+    if not professional_id:
+        return jsonify({"error": "Professional ID is required"}), 400
+
     today = datetime.utcnow().date()
     last_week = today - timedelta(days=7)
 
-    # Query sessions in the last 7 days
-    schedules = Schedule.query.filter(Schedule.date >= last_week, Schedule.date <= today).all()
+        # Query schedules for the given professional in the last 7 days
+    schedules = Schedule.query.filter(
+        Schedule.professional_id == professional_id,
+        Schedule.date >= last_week,
+        Schedule.date <= today
+    ).all()
 
     stats = {
         "attended": 0,
         "cancelled": 0,
-        "scheduled": 0,
+        "scheduled": 0,  # Pending or open
     }
 
-    # Count sessions by status
+        # Count schedules based on their status and conditions
     for schedule in schedules:
-        if schedule.status == "attended":
+        if schedule.professional_attended:  # Count attended sessions
             stats["attended"] += 1
-        elif schedule.status == "cancelled":
+        elif schedule.status.lower() == "cancelled":  # Count cancelled sessions
             stats["cancelled"] += 1
-        elif schedule.status == "pending":
+        elif schedule.status.lower() in ["booked", "open", "pending"]:  # Count scheduled sessions
             stats["scheduled"] += 1
 
     return jsonify(stats), 200

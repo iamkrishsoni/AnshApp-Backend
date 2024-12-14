@@ -158,10 +158,13 @@ def signin():
     email = data.get('email')
     phone = data.get('phone')
     password = data.get('password')
+    role = data.get('role')
 
     if not email and not phone:
         return jsonify({"message": "Either email or phone number must be provided"}), 400
 
+    if not role:
+        return jsonify({"message": "Role must be provided"}), 400
     # Dynamically filter based on email or phone
     user = None
     if email:
@@ -171,7 +174,12 @@ def signin():
 
     if user is None:
         return jsonify({"message": "User not found"}), 404
+    
+    if role == "ComfortBuddy" and user.type != "ComfortBuddy":
+        return jsonify({"message": "Unauthorized role for the user"}), 403
 
+    if role == "Psychologist" and user.type != "Psychologist":
+        return jsonify({"message": "Unauthorized role for the user"}), 403
     # Check if the provided password is correct
     if user.hashed_password != password:
         return jsonify({"message": "Invalid password"}), 401
