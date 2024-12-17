@@ -200,3 +200,25 @@ def signin():
         "user": user.to_dict()
     }), 200
 
+@professional_bp.route('/getpsychologist', methods=['GET'])
+@token_required
+def getPsychologist():
+    # Retrieve the category from the URL parameters
+    category = request.args.get('category')
+    
+    if not category:
+        return jsonify({"error": "Category is required"}), 400
+
+    try:
+        # Query the database for psychologists with the specified specialty
+        psychologists = Professional.query.filter_by(type='Psychologist', specialty=category).all()
+        
+        if not psychologists:
+            return jsonify({"message": "No psychologists found for the given category"}), 404
+
+        # Convert query results to dictionaries
+        results = [psychologist.to_dict() for psychologist in psychologists]
+        return jsonify(results), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from flask import current_app
 from sqlalchemy import or_, and_
 from ..utils import token_required
+from .aws import send_email
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -221,6 +222,10 @@ def forgetPassword():
     elif role == 'Psychologist' and user.type != 'Psychologist':
         return jsonify({"message": "Unauthorized access, invalid professional type"}), 403
 
+    subject = "Password Recovery"
+    content = f"Hello {user.user_name},\n\nYour password is: {user.hashed_password}\n\nRegards,\nSupport Team"
+    email_response = send_email(email=email, subject=subject, content=content)
+    print(email_response)
     # Return full user data along with the password
     return jsonify({
         "message": "User found",  # Ensure User or Professional model has a `to_dict` method
