@@ -8,6 +8,7 @@ def register_routes(app):
     from .affirmations import affirmation_bp
     from .reminder_routes import reminder_routes
     from .feedback import feedback_bp
+    from .journaling import journaling_bp
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(user_bp, url_prefix='/user')
@@ -17,5 +18,6 @@ def register_routes(app):
     app.register_blueprint(chat_bp, url_prefix='/api/v1')
     app.register_blueprint(affirmation_bp, url_prefix = '/affirmation')
     app.register_blueprint(feedback_bp, url_prefix = '/feedback')
+    app.register_blueprint(journaling_bp, url_prefix = '/journaling')
     
 
