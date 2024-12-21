@@ -13,3 +13,4 @@ from .device import Device
 from .reminder import Reminder
 from .feedback import Feedback
 from .journaling import Journaling
+from .visionboard import VisionBoard
