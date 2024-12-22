@@ -30,7 +30,6 @@ def create_vision_board(current_user):  # Assuming `current_user` is passed by t
             object_4_image_url=data.get('object_4_image_url'),
         )
 
-        # Add and commit to the database
         db.session.add(new_board)
         db.session.commit()
 

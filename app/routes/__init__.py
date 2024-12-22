@@ -10,6 +10,7 @@ def register_routes(app):
     from .feedback import feedback_bp
     from .journaling import journaling_bp
     from .visionboard import vision_board_bp
+    from .goals import goal_bp
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(user_bp, url_prefix='/user')
@@ -21,5 +22,7 @@ def register_routes(app):
     app.register_blueprint(feedback_bp, url_prefix = '/feedback')
     app.register_blueprint(journaling_bp, url_prefix = '/journaling')
     app.register_blueprint(vision_board_bp, url_prefix = '/visionboard')
+    app.register_blueprint(vision_board_bp, url_prefix = '/visionboard')
+    app.register_blueprint(goal_bp, url_prefix = '/goals')
     
 
