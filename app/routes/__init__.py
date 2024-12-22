@@ -22,7 +22,6 @@ def register_routes(app):
     app.register_blueprint(feedback_bp, url_prefix = '/feedback')
     app.register_blueprint(journaling_bp, url_prefix = '/journaling')
     app.register_blueprint(vision_board_bp, url_prefix = '/visionboard')
-    app.register_blueprint(vision_board_bp, url_prefix = '/visionboard')
     app.register_blueprint(goal_bp, url_prefix = '/goals')
     
 
