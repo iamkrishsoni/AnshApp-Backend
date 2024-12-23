@@ -85,7 +85,7 @@ def get_chat_messages(chat_room_id):
 
 @chat_bp.route('/chats/<int:chat_room_id>/message', methods=['POST'])
 @token_required
-def send_message(chat_room_id):
+def send_message(current_user,chat_room_id):
     data = request.get_json()
     
     # Extract sender details from the request data
@@ -158,7 +158,7 @@ def send_message(chat_room_id):
 
 @chat_bp.route('/chats/create', methods=['POST'])
 @token_required
-def create_chat_room():
+def create_chat_room(current_user):
     data = request.get_json()
     user_id = data.get('user_id')
     professional_id = data.get('professional_id')

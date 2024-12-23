@@ -11,7 +11,7 @@ affirmation_bp = Blueprint('affirmation', __name__)
 # Route for creating Permanent Affirmations
 @affirmation_bp.route('/permanent', methods=['POST'])
 @token_required
-def create_permanent_affirmation():
+def create_permanent_affirmation(current_user):
     data = request.get_json()
     user_id = data.get('user_id')
     affirmation_text = data.get('affirmation_text')
@@ -39,7 +39,7 @@ def create_permanent_affirmation():
 # Route for creating Daily Affirmations
 @affirmation_bp.route('/daily', methods=['POST'])
 @token_required
-def create_daily_affirmation():
+def create_daily_affirmation(current_user):
     data = request.get_json()
     user_id = data.get('user_id')
     affirmation_text = data.get('affirmation_text')
@@ -65,10 +65,11 @@ def create_daily_affirmation():
         return jsonify({"message": str(e)}), 500
 
 # Route for getting Daily Affirmations for a user
-@affirmation_bp.route('/daily/<int:user_id>', methods=['GET'])
+@affirmation_bp.route('/daily', methods=['GET'])
 @token_required
-def get_daily_affirmations(user_id):
-    user = User.query.get(user_id)
+def get_daily_affirmations(current_user):
+    userid = current_user.get('user_id')
+    user = User.query.get(userid)
     if not user:
         return jsonify({"message": "User not found"}), 404
 
@@ -86,10 +87,11 @@ def get_daily_affirmations(user_id):
     return jsonify(affirmations_list), 200
 
 # Route for getting Permanent Affirmations for a user
-@affirmation_bp.route('/permanent/<int:user_id>', methods=['GET'])
+@affirmation_bp.route('/permanent', methods=['GET'])
 @token_required
-def get_permanent_affirmations(user_id):
-    user = User.query.get(user_id)
+def get_permanent_affirmations(current_user):
+    userid = current_user.get('user_id')
+    user = User.query.get(userid)
     if not user:
         return jsonify({"message": "User not found"}), 404
 

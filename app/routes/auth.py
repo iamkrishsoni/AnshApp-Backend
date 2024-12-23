@@ -235,7 +235,7 @@ def forgetPassword():
 
 @auth_bp.route('/mobile-otp', methods=['POST'])
 @token_required
-def mobile_otp():
+def mobile_otp(current_user):
     data = request.get_json()
     phone = data.get('phone')
     user_id = data.get('user_id')
@@ -277,7 +277,7 @@ def mobile_otp():
 
 @auth_bp.route('/resend-mobile-otp', methods=['POST'])
 @token_required
-def resend_mobile_otp():
+def resend_mobile_otp(current_user):
     data = request.get_json()
     phone = data.get('phone')
     user_id = data.get('user_id')
@@ -308,7 +308,7 @@ def resend_mobile_otp():
 
 @auth_bp.route('/verify-mobile-otp', methods=['POST'])
 @token_required
-def verify_mobile_otp():
+def verify_mobile_otp(current_user):
     data = request.get_json()
     transaction_id = data.get('transaction_id')
     otp_code = data.get('otp')
@@ -340,7 +340,7 @@ def verify_mobile_otp():
 
 @auth_bp.route('/email-otp', methods=['POST'])
 @token_required
-def email_otp():
+def email_otp(current_user):
     data = request.get_json()
     email = data.get('email')
     user_id = data.get('user_id')
@@ -381,7 +381,7 @@ def email_otp():
 
 @auth_bp.route('/resend-email-otp', methods=['POST'])
 @token_required
-def resend_email_otp():
+def resend_email_otp(current_user):
     data = request.get_json()
     email = data.get('email')
     user_id = data.get('user_id')
@@ -412,7 +412,7 @@ def resend_email_otp():
 
 @auth_bp.route('/verify-email-otp', methods=['POST'])
 @token_required
-def verify_email_otp():
+def verify_email_otp(current_user):
     data = request.get_json()
     transaction_id = data.get('transaction_id')
     otp_code = data.get('otp')
@@ -461,12 +461,13 @@ def verify_email_otp():
         db.session.rollback()
         return jsonify({"message": "Error updating verification status", "error": str(e)}), 500
 
-@auth_bp.route('/user/<int:user_id>/bountypoints', methods=['POST'])
-def add_bounty_points(user_id):
+@auth_bp.route('/user/bountypoints', methods=['POST'])
+def add_bounty_points(current_user):
+    userid = current_user.get('user_id')
     data = request.get_json()
 
     # Fetch user and their bounty wallet
-    user = User.query.get(user_id)
+    user = User.query.get(userid)
     if not user:
         return jsonify({"message": "User not found"}), 404
 

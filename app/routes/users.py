@@ -24,9 +24,13 @@ class UserProfileSchema(Schema):
 user_schema = UserProfileSchema()
 
 # Update User Profile
-@user_bp.route("/users/<int:userid>", methods=["PUT"])
+@user_bp.route("/users", methods=["PUT"])  # No need for <int:userid> in the route
 @token_required
-def update_user(userid):
+def update_user(current_user):
+    if not current_user:
+        return jsonify({"message": "Unauthorized access"}), 401
+
+    userid = current_user.get('user_id')  # Assuming `current_user` contains the user ID
     data = request.get_json()
 
     # Validate input data
@@ -91,12 +95,13 @@ def update_user(userid):
         return jsonify({"message": "An error occurred while updating the user"}), 500
 
 # Delete User Profile
-@user_bp.route("/users/<int:userid>", methods=["DELETE"])
+@user_bp.route("/users", methods=["DELETE"])
 @token_required
-def delete_user(userid):
+def delete_user(current_user):
     """
     Deletes a user by their user ID.
     """
+    userid = current_user.get('user_id')
     user = User.query.get(userid)
 
     # Check if the user exists
@@ -115,11 +120,12 @@ def delete_user(userid):
 
 
 
-@user_bp.route("/user/<int:userId>/bountypoints", methods=["POST"])
+@user_bp.route("/user/bountypoints", methods=["POST"])
 @token_required
-def update_bounty_points(userId):
+def update_bounty_points(current_user):
     try:
         data = request.get_json()
+        userId = current_user.get('user_id')
 
         wallet_id = data.get('wallet_id')
         category = data.get('category')
@@ -170,9 +176,10 @@ def update_bounty_points(userId):
     
 
 # Fetch bounty points for a user
-@user_bp.route("/user/<int:userId>/bountypoints", methods=["GET"])
+@user_bp.route("/user/bountypoints", methods=["GET"])
 @token_required
-def get_bounty_points(userId):
+def get_bounty_points(current_user):
+    userId = current_user.get('user_id')
     # Fetch all bounty points for the user
     bounty_points = BountyPoints.query.filter_by(user_id=userId).all()
 
@@ -196,8 +203,10 @@ def get_bounty_points(userId):
 
     return jsonify(result), 200
 
-@user_bp.route("/user/<int:userId>/bountywallet", methods=["GET"])
-def get_bounty_wallet(userId):
+@user_bp.route("/user/bountywallet", methods=["GET"])
+@token_required
+def get_bounty_wallet(current_user):
+    userId = current_user.get('user_id')
     try:
         # Query the wallet for the user
         wallet = BugBountyWallet.query.filter_by(user_id=userId).first()

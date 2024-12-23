@@ -8,7 +8,7 @@ goal_bp = Blueprint('goal', __name__)
 
 @goal_bp.route('/add', methods=['POST'])
 @token_required
-def add_goal():
+def add_goal(current_user):
     try:
         data = request.get_json()
 
@@ -70,7 +70,7 @@ def add_goal():
 
 @goal_bp.route('/getall', methods=['GET'])
 @token_required
-def get_all_goals():
+def get_all_goals(current_user):
     user_id = request.args.get('userid')
     if not user_id:
         return jsonify({"error": "Missing 'userid' query parameter"}), 400
@@ -89,7 +89,7 @@ def get_all_goals():
     
 @goal_bp.route('/daily', methods=['GET'])
 @token_required
-def get_daily_goals():
+def get_daily_goals(current_user):
     user_id = request.args.get('userid')
     if not user_id:
         return jsonify({"error": "Missing 'userid' query parameter"}), 400
@@ -108,7 +108,7 @@ def get_daily_goals():
 
 @goal_bp.route('/monthly', methods=['GET'])
 @token_required
-def get_monthly_goals():
+def get_monthly_goals(current_user):
     """
     Fetch all monthly goals of a user.
     """
@@ -131,7 +131,7 @@ def get_monthly_goals():
 
 @goal_bp.route('/yearly', methods=['GET'])
 @token_required
-def get_yearly_goals():
+def get_yearly_goals(current_user):
     user_id = request.args.get('userid')
     if not user_id:
         return jsonify({"error": "Missing 'userid' query parameter"}), 400
@@ -150,7 +150,7 @@ def get_yearly_goals():
     
 @goal_bp.route('/<int:goal_id>/status', methods=['PATCH'])
 @token_required
-def update_goal_status(goal_id):
+def update_goal_status(current_user,goal_id):
     try:
         # Parse the request data
         data = request.get_json()

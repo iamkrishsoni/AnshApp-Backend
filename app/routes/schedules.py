@@ -11,7 +11,7 @@ from sqlalchemy import cast, DateTime
 schedule_bp = Blueprint('schedules', __name__)
 @schedule_bp.route('/create', methods=['POST'])
 @token_required
-def create_schedule():
+def create_schedule(current_user):
     data = request.get_json()
     
     professional_id = data.get('professionalId')
@@ -73,7 +73,7 @@ def create_schedule():
 
 @schedule_bp.route('/getall', methods=['GET'])
 @token_required
-def get_all_open_schedules():
+def get_all_open_schedules(current_user):
     try:
         # Get the current datetime
         current_time = datetime.utcnow()
@@ -127,7 +127,7 @@ def get_all_open_schedules():
 
 @schedule_bp.route('/update/<int:schedule_id>', methods=['PUT'])
 @token_required
-def update_schedule(schedule_id):
+def update_schedule(current_user,schedule_id):
     data = request.get_json()
     
     # Find the schedule by ID
@@ -176,7 +176,7 @@ def update_schedule(schedule_id):
 
 @schedule_bp.route('/get/<int:schedule_id>', methods=['GET'])
 @token_required
-def get_schedule(schedule_id):
+def get_schedule(current_user,schedule_id):
     schedule = Schedule.query.get(schedule_id)
     if not schedule:
         return jsonify({"message": "Schedule not found"}), 404
@@ -200,7 +200,7 @@ def get_schedule(schedule_id):
 
 @schedule_bp.route('/delete/<int:schedule_id>', methods=['DELETE'])
 @token_required
-def delete_schedule(schedule_id):
+def delete_schedule(current_user,schedule_id):
     schedule = Schedule.query.get(schedule_id)
     if not schedule:
         return jsonify({"message": "Schedule not found"}), 404
@@ -210,17 +210,18 @@ def delete_schedule(schedule_id):
     return jsonify({"message": "Schedule deleted successfully"}), 200
 
 # get all schedules for any specific user
-@schedule_bp.route('/user/<int:user_id>/schedules', methods=['GET'])
+@schedule_bp.route('/user/schedules', methods=['GET'])
 @token_required
-def get_schedules_for_user(user_id):
+def get_schedules_for_user(current_user):
+    userid = current_user.get('user_id')
     # Get the current time
     current_time = datetime.now()
-    print(user_id)
+    print(userid)
     print(current_time)
 
     # Query the schedules, filter for schedules after the current time
     schedules = Schedule.query.filter(
-        Schedule.user_id == user_id,
+        Schedule.user_id == userid,
     ).all()  # Assuming Schedule has a relationship with Professional
         # cast(Schedule.start_time, DateTime) > current_time
     print(schedules)
@@ -263,7 +264,7 @@ def get_schedules_for_user(user_id):
 # get all schedules for any specific professional
 @schedule_bp.route('/professional/<int:professional_id>/schedules', methods=['GET'])
 @token_required
-def get_schedules_for_professional(professional_id):
+def get_schedules_for_professional(current_user,professional_id):
     schedules = Schedule.query.filter_by(professional_id=professional_id).all()
     if not schedules:
         return jsonify({"message": "No schedules found for this professional"}), 404
@@ -289,7 +290,7 @@ def get_schedules_for_professional(professional_id):
 
 @schedule_bp.route('/stats/lastweek', methods=['GET'])
 @token_required
-def get_last_week_statistics():
+def get_last_week_statistics(current_user):
     professional_id = request.args.get('professional_id')  # Extract `professional_id` from query params
     if not professional_id:
         return jsonify({"error": "Professional ID is required"}), 400

@@ -68,7 +68,7 @@ def create_professional():
 
 @professional_bp.route('/professionals/<int:id>', methods=['GET'])
 @token_required
-def get_professional(id):
+def get_professional(current_user,id):
     """Retrieve a professional account by ID."""
     professional = Professional.query.get(id)
     if not professional:
@@ -102,7 +102,7 @@ def get_professional(id):
 
 @professional_bp.route('/professionals/<int:id>', methods=['PUT'])
 @token_required
-def update_professional(id):
+def update_professional(current_user,id):
     """Update a professional account by ID."""
     data = request.json
     professional = Professional.query.get(id)
@@ -138,7 +138,7 @@ def update_professional(id):
 
 @professional_bp.route('/professionals/<int:id>', methods=['DELETE'])
 @token_required
-def delete_professional(id):
+def delete_professional(current_user,id):
     """Delete a professional account by ID."""
     professional = Professional.query.get(id)
     if not professional:
@@ -202,7 +202,7 @@ def signin():
 
 @professional_bp.route('/getpsychologist', methods=['GET'])
 @token_required
-def getPsychologist():
+def getPsychologist(current_user):
     # Retrieve the category from the URL parameters
     category = request.args.get('category')
     
