@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from ..db import db
-from ..models import VisionBoard
+from ..models import VisionBoard, User, DailyActivity
 from datetime import datetime
 from ..utils import token_required
 
@@ -31,6 +31,25 @@ def create_vision_board(current_user):  # Assuming `current_user` is passed by t
         )
 
         db.session.add(new_board)
+        today = datetime.today().strftime('%Y-%m-%d')
+        daily_activity = DailyActivity.query.filter_by(user_id=current_user.get('user_id'), date=today).first()
+
+        # If DailyActivity doesn't exist, create one
+        if not daily_activity:
+            daily_activity = DailyActivity(
+                user_id=current_user.get('user_id'),
+                date=today,
+                affirmation_completed=False,  # Set default values as False
+                journaling=False,
+                mindfulness=False,
+                goalsetting=False,
+                visionboard=True,  # Mark vision board as completed
+                app_usage_time=0
+            )
+            db.session.add(daily_activity)
+        else:
+            # If DailyActivity exists, update visionboard to True
+            daily_activity.visionboard = True
         db.session.commit()
 
         return jsonify({"message": "VisionBoard created successfully!", "data": new_board.to_dict()}), 201

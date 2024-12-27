@@ -1,6 +1,6 @@
 from ..utils import token_required
 from flask import Blueprint, request, jsonify, current_app
-from ..models import DailyAffirmation, PermanentAffirmation, User
+from ..models import DailyAffirmation, PermanentAffirmation, User, DailyActivity
 from ..db import db
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
@@ -30,6 +30,25 @@ def create_permanent_affirmation(current_user):
     )
     try:
         db.session.add(permanent_affirmation)
+        today = datetime.today().strftime('%Y-%m-%d')
+        daily_activity = DailyActivity.query.filter_by(user_id=user_id, date=today).first()
+
+        # If DailyActivity doesn't exist, create one
+        if not daily_activity:
+            daily_activity = DailyActivity(
+                user_id=user_id,
+                date=today,
+                affirmation_completed=True,  # Set affirmation to completed
+                journaling=False,
+                mindfulness=False,
+                goalsetting=False,
+                visionboard=False,
+                app_usage_time=0
+            )
+            db.session.add(daily_activity)
+        else:
+            # If DailyActivity exists, just update affirmation_completed to True
+            daily_activity.affirmation_completed = True
         db.session.commit()
         return jsonify({"message": "Permanent affirmation created successfully"}), 201
     except SQLAlchemyError as e:

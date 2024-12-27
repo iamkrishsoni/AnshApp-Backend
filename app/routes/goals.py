@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, time
-from ..models import Goals
+from ..models import Goals, User, DailyActivity
 from ..db import db
 from ..utils import token_required
 
@@ -58,6 +58,25 @@ def add_goal(current_user):
         )
 
         db.session.add(new_goal)
+        today = datetime.today().strftime('%Y-%m-%d')
+        daily_activity = DailyActivity.query.filter_by(user_id=current_user.get('user_id'), date=today).first()
+
+        # If DailyActivity doesn't exist, create one
+        if not daily_activity:
+            daily_activity = DailyActivity(
+                user_id=current_user.get('user_id'),
+                date=today,
+                affirmation_completed=False,  # Set default values as False
+                journaling=False,
+                mindfulness=False,
+                goalsetting=True,
+                visionboard=False,  # Mark vision board as completed
+                app_usage_time=0
+            )
+            db.session.add(daily_activity)
+        else:
+            # If DailyActivity exists, update visionboard to True
+            daily_activity.goalsetting = True
         db.session.commit()
 
         return jsonify({

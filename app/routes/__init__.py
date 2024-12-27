@@ -11,6 +11,8 @@ def register_routes(app):
     from .journaling import journaling_bp
     from .visionboard import vision_board_bp
     from .goals import goal_bp
+    from .mindfulness import mindfulness_bp
+    from .extras import extras_bp
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(user_bp, url_prefix='/user')
@@ -23,5 +25,7 @@ def register_routes(app):
     app.register_blueprint(journaling_bp, url_prefix = '/journaling')
     app.register_blueprint(vision_board_bp, url_prefix = '/visionboard')
     app.register_blueprint(goal_bp, url_prefix = '/goals')
+    app.register_blueprint(mindfulness_bp, url_prefix = '/mindfulness')
+    app.register_blueprint(extras_bp, url_prefix = '/new')
     
 

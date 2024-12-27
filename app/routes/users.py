@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash
-from ..models import User, BountyPoints, BugBountyWallet
+from ..models import User, BountyPoints, BugBountyWallet, DailyActivity
 from ..db import db
 from ..utils import token_required  
 from sqlalchemy.exc import SQLAlchemyError
@@ -246,3 +246,27 @@ def get_bounty_wallet(current_user):
     except Exception as e:
         print(f"Error: {e}")  # Log the error for debugging
         return jsonify({'error': 'An error occurred while fetching the wallet'}), 500
+
+
+@user_bp.route('/get-daily-activities', methods=['GET'])
+@token_required
+def get_daily_activities(current_user):
+    user_id = current_user.get('user_id')  # Get the user ID from the query parameters
+
+    # Ensure user_id is provided
+    if not user_id:
+        return jsonify({"message": "User ID is required"}), 400
+
+    # Fetch user from the database
+    user = User.query.get(user_id)
+
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    # Fetch all daily activities for the user
+    daily_activities = DailyActivity.query.filter_by(user_id=user_id).all()
+
+    # Return the data as a list of dictionaries
+    activities_data = [activity.to_dict() for activity in daily_activities]
+    
+    return jsonify(activities_data), 200

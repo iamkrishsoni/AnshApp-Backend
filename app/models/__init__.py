@@ -15,3 +15,4 @@ from .feedback import Feedback
 from .journaling import Journaling
 from .visionboard import VisionBoard
 from .goals import Goals
+from .dailyActivity import DailyActivity
