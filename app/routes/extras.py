@@ -2,7 +2,7 @@ from datetime import datetime
 from flask import Blueprint, request, jsonify
 from ..models import DailyActivity
 from ..db import db
-from . import token_required
+from ..utils import token_required
 
 # Blueprint for extras routes
 extras_bp = Blueprint('extras', __name__)
