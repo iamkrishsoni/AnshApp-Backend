@@ -5,6 +5,7 @@ from ..db import db
 from ..utils import token_required  
 from sqlalchemy.exc import SQLAlchemyError
 from marshmallow import Schema, fields, validate
+from sqlalchemy import or_, and_
 from datetime import datetime, timedelta
 import jwt
 
@@ -12,60 +13,68 @@ professional_bp = Blueprint('professional', __name__)
 
 @professional_bp.route('/professionals', methods=['POST'])
 def create_professional():
-    data = request.json
+    data = request.get_json()
+    print("Data in professional signup request:", data.get('email'))
     try:
-        # Check if professional with the same email already exists
+        # Ensure at least one of email or phone and password is provided
+        if not data.get('password') or not (data.get('email') or data.get('phone')):
+            return jsonify({"error": "Password and either email or phone are required."}), 400
+        email = data.get('email') or f"noemail{str(datetime.utcnow().timestamp())}@gmail.com"
+        phone = data.get('phone')
+        # Check if a professional with the same email or phone already exists
         existing_professional = Professional.query.filter(
-            (Professional.email == data['email']) | (Professional.phone == data.get('phone'))
+        or_(
+            and_(Professional.email == email, email is not None),
+            and_(Professional.phone == phone, phone is not None)
+        )
         ).first()
 
-        # If professional already exists, return error message
         if existing_professional:
-            return jsonify({"error": "A professional with this email or phone number already exists."}), 409
+            return jsonify({"error": "A professional with this email or phone already exists."}), 409
 
-        # Create a new professional if not already existing
+        # Hash the password
+        hashed_password = data['password']
+
+        # Create a new professional
         professional = Professional(
-            type=data.get('type', 'professional'),
-            specialty=data['specialty'],
-            soft_skills=data.get('softSkills'),
-            resume=data.get('resume'),
-            identity=data.get('identity'),
-            bio=data.get('bio'),
-            ratings_allowed=data.get('ratingsAllowed', 'yes'),
-            is_anonymous=data.get('isAnonymous', 'no'),
-            license_number=data.get('licenseNumber'),
-            years_of_experience=data.get('yearsOfExperience', 0),
-            user_name=data['userName'],
-            email=data['email'],
-            hashed_password=data['password'],
+            email=data.get('email'),
             phone=data.get('phone'),
-            date_of_birth=data.get('dateOfBirth'),
-            user_gender=data.get('userGender'),
-            location=data.get('location'),
-            email_verified=data.get('emailVerified', False),
-            mobile_verified=data.get('mobileVerified', False),
-            term_conditions_signed=data.get('termconditionesSigned', False),
-            sign_up_date=data.get('signUpDate'),
-            user_status=data.get('userStatus', 1)
+            hashed_password=hashed_password,
+            type=data.get('role', 'professional'),  # Default to 'professional'
+            sign_up_date=datetime.utcnow(),
+            user_status=1  # Default active status
         )
 
         db.session.add(professional)
-        db.session.commit()
+        db.session.commit()  # Commit the professional creation
 
         # Generate JWT token
         token_data = {
             'user_id': professional.id,
-            'role': 'Professional',  # Corrected typo here ('Preofessional' to 'Professional')
+            'role': 'Professional',
             'exp': datetime.utcnow() + timedelta(seconds=current_app.config['JWT_EXPIRATION_DELTA'])
         }
         token = jwt.encode(token_data, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
-        professional_data = professional.to_dict()
-        return jsonify({"message": "Professional account created successfully", "id": professional.id, "token": token,"professional": professional_data}), 201
+
+        # Convert professional object to dictionary for JSON response
+        professional_data = {
+            "id": professional.id,
+            "email": professional.email,
+            "phone": professional.phone,
+            "userName": professional.user_name,
+            "type": professional.type,
+            "signUpDate": professional.sign_up_date,
+            "userStatus": professional.user_status
+        }
+
+        return jsonify({
+            "message": "Professional account created successfully",
+            "user": professional.to_dict(),
+            "token": token
+        }), 201
     except Exception as e:
         print(str(e))
         return jsonify({"error": str(e)}), 400
-
-
 @professional_bp.route('/professionals/<int:id>', methods=['GET'])
 @token_required
 def get_professional(current_user,id):
@@ -131,7 +140,10 @@ def update_professional(current_user,id):
         professional.user_status = data.get('userStatus', professional.user_status)
 
         db.session.commit()
-        return jsonify({"message": "Professional account updated successfully"}), 200
+        return jsonify({
+            "message": "Professional account updated successfully",
+            "user": professional.to_dict(),
+        }), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 

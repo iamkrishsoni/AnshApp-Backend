@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from flask import current_app
 from sqlalchemy import or_, and_
 from ..utils import token_required
-from .aws import send_email
+from .aws import send_email, send_sms
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -201,7 +201,7 @@ def forgetPassword():
     target_model = None
     if role == 'User':
         target_model = User
-    elif role == 'ComfortBuddy' or role == 'Psychologist':
+    elif role in ['ComfortBuddy', 'Psychologist']:
         target_model = Professional
     else:
         return jsonify({"message": "Invalid role provided"}), 400
@@ -223,16 +223,27 @@ def forgetPassword():
     elif role == 'Psychologist' and user.type != 'Psychologist':
         return jsonify({"message": "Unauthorized access, invalid professional type"}), 403
 
-    subject = "Password Recovery"
-    content = f"Hello {user.user_name},\n\nYour password is: {user.hashed_password}\n\nRegards,\nSupport Team"
-    email_response = send_email(email=email, subject=subject, content=content)
-    print(email_response)
-    # Return full user data along with the password
-    return jsonify({
-        "message": "User found",  # Ensure User or Professional model has a `to_dict` method
-        "password": user.hashed_password,  # Include the password in the response
-    }), 200
+    if email:
+        # Send an email with the password
+        subject = "Password Recovery"
+        content = f"Hello {user.user_name},\n\nYour password is: {user.hashed_password}\n\nRegards,\nSupport Team"
+        email_response = send_email(email=email, subject=subject, content=content)
+        print(email_response)
 
+        return jsonify({
+            "message": "Password recovery email sent",
+        }), 200
+    
+    elif phone:
+        # Generate OTP and send it via SMS
+        otp = user.hashed_password,  # Generate a 6-digit OTP
+        sms_response = send_sms(phone, otp)
+        print(sms_response)
+
+        return jsonify({
+            "message": "OTP sent to phone",
+            "otp": otp,  # In real cases, you wouldn't return the OTP, it's just for demo
+        }), 200
 @auth_bp.route('/mobile-otp', methods=['POST'])
 @token_required
 def mobile_otp(current_user):
