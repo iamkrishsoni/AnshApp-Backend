@@ -75,6 +75,7 @@ def create_professional():
     except Exception as e:
         print(str(e))
         return jsonify({"error": str(e)}), 400
+
 @professional_bp.route('/professionals/<int:id>', methods=['GET'])
 @token_required
 def get_professional(current_user,id):
@@ -120,6 +121,7 @@ def update_professional(current_user,id):
 
     try:
         professional.specialty = data.get('specialty', professional.specialty)
+        professional.avatar = data.get('avatar', professional.avatar)
         professional.soft_skills = data.get('softSkills', professional.soft_skills)
         professional.resume = data.get('resume', professional.resume)
         professional.identity = data.get('identity', professional.identity)

@@ -20,6 +20,7 @@ class UserProfileSchema(Schema):
     dateOfBirth = fields.String(required=True)
     user_gender = fields.String(required=True)
     location = fields.String(required=True)
+    avatar = fields.String(required=False)
 
 user_schema = UserProfileSchema()
 
@@ -32,6 +33,7 @@ def update_user(current_user):
 
     userid = current_user.get('user_id')  # Assuming `current_user` contains the user ID
     data = request.get_json()
+    print(data)
 
     # Validate input data
     errors = user_schema.validate(data)
@@ -61,6 +63,7 @@ def update_user(current_user):
     user.date_of_birth = data.get("dateOfBirth", user.date_of_birth)
     user.user_gender = data.get("user_gender", user.user_gender)
     user.location = data.get("location", user.location)
+    user.avatar = data.get("avatar", user.avatar)
 
     try:
         db.session.commit()
@@ -268,5 +271,6 @@ def get_daily_activities(current_user):
 
     # Return the data as a list of dictionaries
     activities_data = [activity.to_dict() for activity in daily_activities]
+    print(activities_data)
     
     return jsonify(activities_data), 200

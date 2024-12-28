@@ -6,6 +6,7 @@ class User(db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    avatar = db.Column(db.String(500), nullable=True)
     role = db.Column(db.String(50), nullable=False, default='user')
     type = db.Column(db.String(50), nullable=False, default='user')
     subtype = db.Column(db.String(100))
@@ -40,6 +41,7 @@ class User(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
+            "avatar":self.avatar,
             "role": self.role,
             "user_name": self.user_name,
             "email": self.email,

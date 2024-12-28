@@ -7,6 +7,7 @@ class Professional(db.Model):
     __tablename__ = 'professionals'
 
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    avatar = db.Column(db.String(500), nullable=True)
     type = db.Column(db.String(50), nullable=False, default='professional')
     specialty = db.Column(db.String(100), nullable=False, default="default")
     soft_skills = db.Column(db.String(255))
@@ -37,6 +38,7 @@ class Professional(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
+            "avatar":self.avatar,
             "type": self.type,
             "specialty": self.specialty,
             "soft_skills": self.soft_skills,
