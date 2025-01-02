@@ -13,22 +13,37 @@ affirmation_bp = Blueprint('affirmation', __name__)
 @token_required
 def create_permanent_affirmation(current_user):
     data = request.get_json()
-    user_id = data.get('user_id')
+    
+    # Extract data from the request
+    user_id = current_user.get('user_id')
     affirmation_text = data.get('affirmation_text')
     reminder_active = data.get('reminder_active', False)
     reminder_time = data.get('reminder_time')
+    bg_type = data.get('bg_type')  # New field
+    bg_image = data.get('bg_image')  # New field
+    bg_video = data.get('bg_video')  # New field
+    affirmation_type = data.get('affirmation_type')
+    isdark = data.get('is_dark')# New field
 
+    # Fetch the user to ensure it exists
     user = User.query.get(user_id)
     if not user:
         return jsonify({"message": "User not found"}), 404
 
+    # Create the PermanentAffirmation object with the new fields
     permanent_affirmation = PermanentAffirmation(
-        affirmation_text=affirmation_text, 
+        affirmation_text=affirmation_text,
         user_id=user_id,
         reminder_active=reminder_active,
-        reminder_time=reminder_time
+        reminder_time=reminder_time,
+        bg_type=bg_type,
+        bg_image=bg_image,
+        bg_video=bg_video,
+        affirmation_type=affirmation_type,
+        isdark = isdark
     )
     try:
+        # Add the new affirmation to the session
         db.session.add(permanent_affirmation)
         today = datetime.today().strftime('%Y-%m-%d')
         daily_activity = DailyActivity.query.filter_by(user_id=user_id, date=today).first()
@@ -49,6 +64,8 @@ def create_permanent_affirmation(current_user):
         else:
             # If DailyActivity exists, just update affirmation_completed to True
             daily_activity.affirmation_completed = True
+
+        # Commit the changes to the database
         db.session.commit()
         return jsonify({"message": "Permanent affirmation created successfully"}), 201
     except SQLAlchemyError as e:
@@ -109,19 +126,64 @@ def get_daily_affirmations(current_user):
 @affirmation_bp.route('/permanent', methods=['GET'])
 @token_required
 def get_permanent_affirmations(current_user):
+    print("current user",current_user)
     userid = current_user.get('user_id')
     user = User.query.get(userid)
     if not user:
         return jsonify({"message": "User not found"}), 404
 
-    permanent_affirmations = PermanentAffirmation.query.filter_by(user_id=user_id).all()
+    permanent_affirmations = PermanentAffirmation.query.filter_by(user_id=userid).all()
     if not permanent_affirmations:
         return jsonify({"message": "No permanent affirmations found"}), 404
 
     affirmations_list = [{
+        "id": aff.id,
         "affirmation_text": aff.affirmation_text,
         "reminder_active": aff.reminder_active,
-        "reminder_time": aff.reminder_time
+        "reminder_time": aff.reminder_time,
+        "bg_type": aff.bg_type,
+        "bg_image": aff.bg_image,
+        "bg_video": aff.bg_video,
+        "affirmation_type": aff.affirmation_type,
+        "isDark": aff.isdark
     } for aff in permanent_affirmations]
+    print(affirmations_list)
 
     return jsonify(affirmations_list), 200
+
+@affirmation_bp.route('/permanent/<int:id>', methods=['PUT'])
+@token_required
+def update_permanent_affirmation(current_user, id):
+    # Get the data from the request
+    data = request.get_json()
+    
+    # Retrieve the user ID from the current_user object
+    userid = current_user.get('user_id')
+    
+    # Find the user in the database
+    user = User.query.get(userid)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    # Find the permanent affirmation by ID and user ID
+    affirmation = PermanentAffirmation.query.filter_by(id=id, user_id=userid).first()
+    if not affirmation:
+        return jsonify({"message": "Affirmation not found"}), 404
+
+    # Update the fields if they exist in the request data
+    affirmation.affirmation_text = data.get('affirmation_text', affirmation.affirmation_text)
+    affirmation.reminder_active = data.get('reminder_active', affirmation.reminder_active)
+    affirmation.reminder_time = data.get('reminder_time', affirmation.reminder_time)
+    affirmation.bg_type = data.get('bg_type', affirmation.bg_type)
+    affirmation.bg_image = data.get('bg_image', affirmation.bg_image)
+    affirmation.bg_video = data.get('bg_video', affirmation.bg_video)
+    affirmation.affirmation_type = data.get('affirmation_type', affirmation.affirmation_type)
+    affirmation.isdark = data.get('isDark', affirmation.isdark)
+
+    # Commit the changes to the database
+    try:
+        db.session.commit()
+        return jsonify({"message": "Permanent affirmation updated successfully"}), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"message": str(e)}), 500
