@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash
-from ..models import Schedule, Professional
+from ..models import Schedule, Professional, BountyPoints, BountyWallet
 from ..db import db
 from ..utils import token_required  
 from sqlalchemy.exc import SQLAlchemyError
@@ -127,7 +127,7 @@ def get_all_open_schedules(current_user):
 
 @schedule_bp.route('/update/<int:schedule_id>', methods=['PUT'])
 @token_required
-def update_schedule(current_user,schedule_id):
+def update_schedule(current_user, schedule_id):
     data = request.get_json()
     
     # Find the schedule by ID
@@ -151,6 +151,27 @@ def update_schedule(current_user,schedule_id):
     if schedule.status == 'attended':
         schedule.user_attended = data.get('userAttended', schedule.user_attended)
         schedule.professional_attended = data.get('professionalAttended', schedule.professional_attended)
+
+    # Check if the status is 'session-completed' to add bounty points
+    if schedule.status == 'session-completed':
+        # Retrieve the user's wallet
+        wallet = BountyWallet.query.filter_by(user_id=schedule.user_id).first()
+        if wallet:
+            # Update wallet's total points
+            wallet.total_points += 50
+            wallet.recommended_points += 50
+
+            # Add a new entry to the bounty points
+            new_bounty_points = BountyPoints(
+                user_id=schedule.user_id,
+                name="Session Completed Bonus",
+                category="Session Reward",
+                points=50,
+                recommended_points=50,
+                last_added_points=50,
+                date=datetime.utcnow()
+            )
+            db.session.add(new_bounty_points)
 
     # Commit the changes
     db.session.commit()

@@ -1,12 +1,12 @@
 from flask import Blueprint, request, jsonify
 from ..db import db
-from ..models import VisionBoard, User, DailyActivity
+from ..models import VisionBoard, User, DailyActivity, BountyPoints, BountyWallet
 from datetime import datetime
 from ..utils import token_required
 
 vision_board_bp = Blueprint('vision_board', __name__)
 
-# 1. POST Endpoint to create a new VisionBoard
+
 @vision_board_bp.route('/create', methods=['POST'])
 @token_required
 def create_vision_board(current_user):  # Assuming `current_user` is passed by the `token_required` decorator
@@ -17,7 +17,7 @@ def create_vision_board(current_user):  # Assuming `current_user` is passed by t
         new_board = VisionBoard(
             user_id=current_user.get('user_id'),  # Use the ID of the currently authenticated user
             date=datetime.utcnow(),
-            title = data.get("title"),
+            title=data.get("title"),
             object_0_title=data.get('object_0_title'),
             object_0_image_url=data.get('object_0_image_url'),
             object_1_title=data.get('object_1_title'),
@@ -30,6 +30,7 @@ def create_vision_board(current_user):  # Assuming `current_user` is passed by t
             object_4_image_url=data.get('object_4_image_url'),
         )
 
+        # Add the VisionBoard to the database
         db.session.add(new_board)
         today = datetime.today().strftime('%Y-%m-%d')
         daily_activity = DailyActivity.query.filter_by(user_id=current_user.get('user_id'), date=today).first()
@@ -50,13 +51,37 @@ def create_vision_board(current_user):  # Assuming `current_user` is passed by t
         else:
             # If DailyActivity exists, update visionboard to True
             daily_activity.visionboard = True
+
+        # Logic to award 50 bounty points for first-time vision board creation
+        user_id = current_user.get('user_id')
+        first_time_vision_board = not VisionBoard.query.filter_by(user_id=user_id).first()  # Check if this is the first vision board
+
+        if first_time_vision_board:
+            # Add 50 bounty points
+            bounty_points = BountyPoints(
+                user_id=user_id,
+                name="Vision Board",
+                category="First Time Update",
+                points=50,
+                recommended_points=50,
+                last_added_points=50,
+                date=datetime.utcnow()
+            )
+            db.session.add(bounty_points)
+
+            # Update the user's bounty wallet
+            wallet = BugBountyWallet.query.filter_by(user_id=user_id).first()
+            if wallet:
+                wallet.total_points += 50
+                wallet.recommended_points += 50
+
+        # Commit the changes to the database
         db.session.commit()
 
         return jsonify({"message": "VisionBoard created successfully!", "data": new_board.to_dict()}), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
-
 
 # 2. GET Endpoint to retrieve VisionBoard by user
 @vision_board_bp.route('/<int:user_id>', methods=['GET'])

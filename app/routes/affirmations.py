@@ -1,6 +1,6 @@
 from ..utils import token_required
 from flask import Blueprint, request, jsonify, current_app
-from ..models import DailyAffirmation, PermanentAffirmation, User, DailyActivity
+from ..models import DailyAffirmation, PermanentAffirmation, User, DailyActivity, BountyPoints, BountyWallet
 from ..db import db
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta
@@ -23,7 +23,7 @@ def create_permanent_affirmation(current_user):
     bg_image = data.get('bg_image')  # New field
     bg_video = data.get('bg_video')  # New field
     affirmation_type = data.get('affirmation_type')
-    isdark = data.get('is_dark')# New field
+    isdark = data.get('is_dark')  # New field
 
     # Fetch the user to ensure it exists
     user = User.query.get(user_id)
@@ -40,7 +40,7 @@ def create_permanent_affirmation(current_user):
         bg_image=bg_image,
         bg_video=bg_video,
         affirmation_type=affirmation_type,
-        isdark = isdark
+        isdark=isdark
     )
     try:
         # Add the new affirmation to the session
@@ -64,6 +64,54 @@ def create_permanent_affirmation(current_user):
         else:
             # If DailyActivity exists, just update affirmation_completed to True
             daily_activity.affirmation_completed = True
+
+        # Logic for awarding bounty points
+        # Check if this is the first time the user creates an affirmation
+        first_time_affirmation = not DailyActivity.query.filter_by(user_id=user_id).first()
+        if first_time_affirmation:
+            bounty_points = BountyPoints(
+                user_id=user_id,
+                name="Affirmations",
+                category="First Time Update",
+                points=30,
+                recommended_points=30,
+                last_added_points=30,
+                date=datetime.utcnow()
+            )
+            db.session.add(bounty_points)
+            # Update the user's bounty wallet
+            wallet = BugBountyWallet.query.filter_by(user_id=user_id).first()
+            if wallet:
+                wallet.total_points += 30
+                wallet.recommended_points += 30
+
+        # Check for 3 consecutive days of affirmations
+        last_three_days = [
+            (datetime.utcnow() - timedelta(days=i)).strftime('%Y-%m-%d')
+            for i in range(3)
+        ]
+        consecutive_activities = DailyActivity.query.filter(
+            DailyActivity.user_id == user_id,
+            DailyActivity.date.in_(last_three_days),
+            DailyActivity.affirmation_completed == True
+        ).count()
+
+        if consecutive_activities == 3:
+            bounty_points = BountyPoints(
+                user_id=user_id,
+                name="Affirmations",
+                category="3 Day Update",
+                points=20,
+                recommended_points=20,
+                last_added_points=20,
+                date=datetime.utcnow()
+            )
+            db.session.add(bounty_points)
+            # Update the user's bounty wallet
+            wallet = BugBountyWallet.query.filter_by(user_id=user_id).first()
+            if wallet:
+                wallet.total_points += 20
+                wallet.recommended_points += 20
 
         # Commit the changes to the database
         db.session.commit()
