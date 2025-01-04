@@ -1,6 +1,6 @@
 from ..utils import token_required
 from flask import Blueprint, request, jsonify, current_app
-from ..models import DailyAffirmation, PermanentAffirmation, User, DailyActivity, BountyPoints, BountyWallet
+from ..models import DailyAffirmation, PermanentAffirmation, User, DailyActivity, BountyPoints, BugBountyWallet
 from ..db import db
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime, timedelta

@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash
-from ..models import Schedule, Professional, BountyPoints, BountyWallet
+from ..models import Schedule, Professional, BountyPoints, BugBountyWallet
 from ..db import db
 from ..utils import token_required  
 from sqlalchemy.exc import SQLAlchemyError

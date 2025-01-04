@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from ..db import db
-from ..models import VisionBoard, User, DailyActivity, BountyPoints, BountyWallet
+from ..models import VisionBoard, User, DailyActivity, BountyPoints, BugBountyWallet
 from datetime import datetime
 from ..utils import token_required
 
