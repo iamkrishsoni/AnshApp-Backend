@@ -287,17 +287,17 @@ def get_schedules_for_user(current_user):
 # get all schedules for any specific professional
 @schedule_bp.route('/professional/<int:professional_id>/schedules', methods=['GET'])
 @token_required
-def get_schedules_for_professional(current_user,professional_id):
+def get_schedules_for_professional(current_user, professional_id):
     schedules = Schedule.query.filter_by(professional_id=professional_id).all()
     if not schedules:
         return jsonify({"message": "No schedules found for this professional"}), 404
 
-    return jsonify([
+    schedules_data = [
         {
             "id": schedule.id,
             "professionalId": schedule.professional_id,
             "userId": schedule.user_id,
-            "userName": schedule.user_name,
+            "userName": schedule.user.user_name if schedule.user else None,
             "slotId": schedule.slot_id,
             "startTime": schedule.start_time.strftime('%Y-%m-%dT%H:%M:%S'),
             "endTime": schedule.end_time.strftime('%Y-%m-%dT%H:%M:%S'),
@@ -307,9 +307,30 @@ def get_schedules_for_professional(current_user,professional_id):
             "reminderActivated": schedule.reminder_activated,
             "anonymous": schedule.anonymous,
             "status": schedule.status,
-            "scheduleType": schedule.schedule_type
-        } for schedule in schedules
-    ]), 200
+            "scheduleType": schedule.schedule_type,
+            "userAttended": schedule.user_attended,
+            "professionalAttended": schedule.professional_attended,
+            "professionalDetails": {
+                "id": schedule.professional.id,
+                "name": schedule.professional.user_name,
+                "email": schedule.professional.email,
+                "phone": schedule.professional.phone,
+                "type":schedule.professional.type,
+                "specialization": schedule.professional.specialty,
+            } if schedule.professional else None,
+            # User details
+            "userDetails": {
+                "id": schedule.user.id,
+                "name": schedule.user.user_name,
+                "email": schedule.user.email,
+                "phone": schedule.user.phone,
+                "gender":schedule.user.user_gender,
+                "dateOfBirth":schedule.user.date_of_birth
+            } if schedule.user else None,
+        }
+        for schedule in schedules
+    ]
+    return jsonify(schedules_data), 200
 
 @schedule_bp.route('/stats/lastweek', methods=['GET'])
 @token_required

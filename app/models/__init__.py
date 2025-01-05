@@ -5,7 +5,7 @@ from .schedule import Schedule
 from .bountywallet import BugBountyWallet
 from .professionals import Professional
 from .chatroom import ChatRoom
-from .chatmessage import ChatMessage
+from .chatmessage import ChatMessage, MessageAttachment
 from .affirmation import DailyAffirmation
 from .permanentAffirmation import PermanentAffirmation
 from .expiredtoken import ExpiredToken
