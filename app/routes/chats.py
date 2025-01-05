@@ -67,7 +67,6 @@ def get_chat_messages(chat_room_id):
 
     messages = ChatMessage.query.filter_by(chat_room_id=chat_room_id).order_by(ChatMessage.timestamp.asc()).all()
     messages_list = [message.to_dict() for message in messages]
-    print(messages_list)
 
     return jsonify({"chat_room_id": chat_room.id, "messages": messages_list}), 200
 
@@ -79,12 +78,16 @@ def send_message(current_user, chat_room_id):
 
     sender_id = data.get('sender_id')
     role = data.get('role')
-    message_type = data.get('message_type').upper()
-    message_content = data.get('message_content')
+    message_type = data.get('message_type').upper()  # TEXT, IMAGE, VIDEO, etc.
+    file_url = data.get('file_url')  # Optional: URL for file/image
+    message_content = data.get('message_content')  # For TEXT messages
     timestamp = data.get('timestamp')
 
-    if not sender_id or not role or not message_type or not message_content:
+    if not sender_id or not role or not message_type:
         return jsonify({"message": "Missing required fields"}), 400
+
+    # if message_type not in MessageType._member_names_:
+    #     return jsonify({"message": "Invalid message type"}), 400
 
     chat_room = ChatRoom.query.get(chat_room_id)
     if not chat_room:
@@ -100,24 +103,47 @@ def send_message(current_user, chat_room_id):
     recipient_id = chat_room.professional_id if role == 'user' else chat_room.user_id
 
     sender_name = "User" if role == 'user' else "Professional"
+
+    # Handle the different message types
+    if message_type in ['TEXT']:
+        # TEXT messages only use `message_content`
+        if not message_content:
+            return jsonify({"message": "Text content is required for TEXT messages"}), 400
+    else:
+        # IMAGE, VIDEO, AUDIO, FILE, DOCUMENT messages must have a `file_url`
+        if not file_url:
+            return jsonify({"message": f"File URL is required for {message_type} messages"}), 400
+
     new_message = ChatMessage(
         chat_room_id=chat_room_id,
         sender_id=sender_id,
         sender_name=sender_name,
         sender_type=role,
         message_type=message_type,
-        message_content=message_content,
+        message_content=message_content if message_type == 'TEXT' else None,
         timestamp=datetime.now(),
         msg_id=str(uuid.uuid4()),
         from_uid=sender_id,
         recipient_id=recipient_id,  # Set recipient ID
         receipt=1,  # Default receipt status
     )
-    
+
     db.session.add(new_message)
     db.session.commit()
 
-    return jsonify({"message": "Message sent successfully"}), 201
+    # Add attachment if applicable
+    if message_type != 'TEXT':
+        attachment = MessageAttachment(
+            chat_message_id=new_message.id,
+            attachment_type=message_type,
+            url=file_url,
+            file_name=file_url.split("/")[-1],  # Extract the file name from the URL
+            file_size=0,  # File size can be updated later if needed
+        )
+        db.session.add(attachment)
+        db.session.commit()
+
+    return jsonify({"message": "Message sent successfully", "message_id": new_message.msg_id}), 201
 
 # Create a new chat room
 @chat_bp.route('/chats/create', methods=['POST'])

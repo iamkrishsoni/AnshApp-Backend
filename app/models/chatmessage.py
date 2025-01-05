@@ -2,14 +2,6 @@ from datetime import datetime
 from enum import Enum
 from ..db import db
 
-class MessageType(Enum):
-    TEXT = 'text'
-    IMAGE = 'image'
-    VIDEO = 'video'
-    AUDIO = 'audio'
-    FILE = 'file'
-    DOCUMENT = 'document'
-
 class ChatMessage(db.Model):
     __tablename__ = 'chat_messages'
 
@@ -18,7 +10,7 @@ class ChatMessage(db.Model):
     sender_type = db.Column(db.String(50), nullable=True)  # 'user' or 'professional'
     sender_id = db.Column(db.String(255), nullable=False)  # Unique sender ID (e.g., email or UUID)
     sender_name = db.Column(db.String(100), nullable=False, default="User")  # Sender's name
-    message_type = db.Column(db.Enum(MessageType), nullable=False)  # Enum for message types
+    message_type = db.Column(db.String(100), nullable=False)  # Enum for message types
     message_content = db.Column(db.Text, nullable=True)  # Could be text or media URL
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     is_read = db.Column(db.Boolean, default=False)  # Track if the message has been read
@@ -37,7 +29,7 @@ class ChatMessage(db.Model):
     chat_room = db.relationship('ChatRoom', backref='messages')
 
     def to_dict(self):
-        media = {attachment.attachment_type.value: attachment.to_dict() for attachment in self.attachments}
+        media = {attachment.attachment_type: attachment.to_dict() for attachment in self.attachments}
         return {
             "_id": str(self.id),
             "createdAt": self.timestamp.isoformat(),
@@ -48,6 +40,7 @@ class ChatMessage(db.Model):
             "name": self.sender_name,
             "receipt": self.receipt,
             "text": self.message_content,
+            "message_type":self.message_type,
             "media": media,
             "timestamp": int(self.timestamp.timestamp() * 1000),
             "recipient_id":self.recipient_id,
@@ -65,7 +58,7 @@ class ChatMessage(db.Model):
             sender_type=data.get('sender_type'),
             sender_id=data.get('sender_id'),
             sender_name=data.get('sender_name', 'User'),
-            message_type=MessageType[data.get('message_type').upper()],
+            message_type=data.get('message_type').upper(),  # Fix here
             message_content=data.get('text'),
             timestamp=datetime.utcnow(),
             is_mentioned=data.get('is_mentioned', False),
@@ -87,12 +80,13 @@ class ChatMessage(db.Model):
         db.session.commit()
         return message
 
+
 class MessageAttachment(db.Model):
     __tablename__ = 'message_attachments'
 
     id = db.Column(db.Integer, primary_key=True)
     chat_message_id = db.Column(db.Integer, db.ForeignKey('chat_messages.id'), nullable=False)
-    attachment_type = db.Column(db.Enum(MessageType), nullable=False)  # Type of media (image, video, etc.)
+    attachment_type = db.Column(db.String(100), nullable=False)  # Type of media (image, video, etc.)
     url = db.Column(db.String(255), nullable=False)  # URL of the uploaded file
     file_name = db.Column(db.String(255), nullable=False)  # Original file name
     file_size = db.Column(db.Integer, nullable=False)  # Size of the file in bytes
@@ -102,14 +96,14 @@ class MessageAttachment(db.Model):
             "url": self.url,
             "file_name": self.file_name,
             "file_size": self.file_size,
-            "type": self.attachment_type.value
+            "type": self.attachment_type
         }
 
     @staticmethod
     def from_attachment_data(data, message_id):
         return MessageAttachment(
             chat_message_id=message_id,
-            attachment_type=MessageType[data['type'].upper()],
+            attachment_type=data['type'].upper(),
             url=data['url'],
             file_name=data['file_name'],
             file_size=data['file_size'],
