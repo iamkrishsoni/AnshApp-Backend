@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash
-from ..models import Schedule, Professional, BountyPoints, BugBountyWallet
+from ..models import Schedule, Professional, BountyPoints, BugBountyWallet, User
 from ..db import db
 from ..utils import token_required  
 from sqlalchemy.exc import SQLAlchemyError
@@ -114,6 +114,8 @@ def get_all_open_schedules(current_user):
                     "type":schedule.professional.type,
                     "phone": schedule.professional.phone,
                     "specialization": schedule.professional.specialty,
+                    "dateOfBirth": schedule.professional.date_of_birth,
+                    "gender":schedule.professional.user_gender,
                 } if schedule.professional else None,
             }
             for schedule in schedules

@@ -91,11 +91,65 @@ def update_user(current_user):
                 "bountyPoints": bounty_points
             }
         }), 200
-
     except SQLAlchemyError as e:
         db.session.rollback()
         print(f"Database Error: {e}")  # Log the error for debugging
         return jsonify({"message": "An error occurred while updating the user"}), 500
+
+
+@user_bp.route("/avatar", methods=["PUT"])  # Specific route for avatar update
+@token_required
+def update_user_avatar(current_user):
+    if not current_user:
+        return jsonify({"message": "Unauthorized access"}), 401
+
+    userid = current_user.get('user_id')  # Assuming `current_user` contains the user ID
+    data = request.get_json()
+    new_avatar = data.get("avatar")
+
+    # Validate input
+    if not new_avatar:
+        return jsonify({"message": "Avatar URL is required"}), 400
+
+    user = User.query.get(userid)
+
+    # Check if the user exists
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    # Update the avatar field
+    user.avatar = new_avatar
+
+    try:
+        db.session.commit()
+
+        # Fetch associated wallet and bounty points
+        bug_bounty_wallet = BugBountyWallet.query.filter_by(user_id=user.id).first()
+        bounty_points = [
+            {
+                "id": point.id,
+                "name": point.name,
+                "category": point.category,
+                "points": point.points,
+                "date": point.date.strftime("%Y-%m-%d")
+            }
+            for point in bug_bounty_wallet.bounty_points
+        ] if bug_bounty_wallet else []
+
+        # Return updated user data in the required format
+        return jsonify({
+            "message": "Avatar updated successfully",
+            "user": user.to_dict(),  # Convert user object to dictionary
+            "bugBountyWallet": {
+                "totalPoints": bug_bounty_wallet.total_points if bug_bounty_wallet else 0,
+                "recommendedPoints": bug_bounty_wallet.recommended_points if bug_bounty_wallet else 0,
+                "bountyPoints": bounty_points
+            }
+        }), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        print(f"Database Error: {e}")  # Log the error for debugging
+        return jsonify({"message": "An error occurred while updating the avatar"}), 500
 
 # Delete User Profile
 @user_bp.route("/users", methods=["DELETE"])
@@ -235,7 +289,7 @@ def get_bounty_wallet(current_user):
             "user_id": wallet.user_id,
             "total_points": wallet.total_points,
             "recommended_points": wallet.recommended_points,
-            "bounty_details": [
+            "bountyPoints": [
                 {
                     "category": bp.category,
                     "points": bp.points,
