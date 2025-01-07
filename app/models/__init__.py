@@ -16,3 +16,4 @@ from .journaling import Journaling
 from .visionboard import VisionBoard
 from .goals import Goals
 from .dailyActivity import DailyActivity
+from .notifications import Notifications

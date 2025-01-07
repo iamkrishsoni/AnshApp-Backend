@@ -13,6 +13,7 @@ def register_routes(app):
     from .goals import goal_bp
     from .mindfulness import mindfulness_bp
     from .extras import extras_bp
+    from .notifications import notifications_bp
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(user_bp, url_prefix='/user')
@@ -27,5 +28,6 @@ def register_routes(app):
     app.register_blueprint(goal_bp, url_prefix = '/goals')
     app.register_blueprint(mindfulness_bp, url_prefix = '/mindfulness')
     app.register_blueprint(extras_bp, url_prefix = '/new')
+    app.register_blueprint(notifications_bp, url_prefix='/notifications')
     
 

@@ -7,6 +7,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from marshmallow import Schema, fields, validate
 from datetime import datetime, timedelta
 from sqlalchemy import cast, DateTime
+from ..services import schedule_session_notifications
 
 schedule_bp = Blueprint('schedules', __name__)
 @schedule_bp.route('/create', methods=['POST'])
@@ -177,6 +178,8 @@ def update_schedule(current_user, schedule_id):
 
     # Commit the changes
     db.session.commit()
+    if schedule.reminder_activated:
+        schedule_session_notifications(schedule)
 
     # Return updated schedule
     return jsonify({
