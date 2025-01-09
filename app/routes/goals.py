@@ -120,7 +120,7 @@ def get_all_goals(current_user):
 
         return jsonify({
             "message": "All goals fetched successfully",
-            "goals": [goal.__todict() for goal in goals]
+            "goals": [goal.to_dict() for goal in goals]
         }), 200
 
     except Exception as e:
@@ -161,7 +161,7 @@ def get_monthly_goals(current_user):
 
         return jsonify({
             "message": "Monthly goals fetched successfully",
-            "goals": [goal.__todict() for goal in monthly_goals]
+            "goals": [goal.to_dict() for goal in monthly_goals]
         }), 200
 
     except Exception as e:
@@ -181,7 +181,7 @@ def get_yearly_goals(current_user):
 
         return jsonify({
             "message": "Yearly goals fetched successfully",
-            "goals": [goal.__todict() for goal in yearly_goals]
+            "goals": [goal.to_dict() for goal in yearly_goals]
         }), 200
 
     except Exception as e:
@@ -210,7 +210,7 @@ def update_goal_status(current_user,goal_id):
 
         return jsonify({
             "message": "Goal status updated successfully",
-            "goal": goal.__todict()
+            "goal": goal.to_dict()
         }), 200
 
     except Exception as e:
