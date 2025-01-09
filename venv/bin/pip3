@@ -1,4 +1,4 @@
-#!/Users/ritikraushan/Downloads/AnshApp-Backend/venv/bin/python3.13
+#!/Users/ritikraushan/Downloads/ansh/AnshApp-Backend/venv/bin/python3.13
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -6,6 +6,8 @@ from ..utils import token_required
 
 goal_bp = Blueprint('goal', __name__)
 
+from datetime import datetime, time
+
 @goal_bp.route('/add', methods=['POST'])
 @token_required
 def add_goal(current_user):
@@ -13,19 +15,28 @@ def add_goal(current_user):
         data = request.get_json()
 
         # Validate required fields
-        required_fields = ["userid", "title", "type", "start_date", "end_date"]
+        required_fields = ["title", "type", "start_date", "end_date"]
         for field in required_fields:
             if field not in data:
                 return jsonify({"error": f"Missing required field: {field}"}), 400
 
         # Parse and extract input data
-        userid = data.get("userid")
+        userid = current_user.get("user_id")
         title = data.get("title")
         description = data.get("description", None)
         image = data.get("image", None)
         goal_type = data.get("type").lower()
-        start_date = datetime.strptime(data.get("start_date"), "%Y-%m-%d").date()
-        end_date = datetime.strptime(data.get("end_date"), "%Y-%m-%d").date()
+
+        # Convert start_date and end_date if they are in MM/DD/YYYY format
+        try:
+            start_date = datetime.strptime(data.get("start_date"), "%m/%d/%Y").date()
+        except ValueError:
+            start_date = datetime.strptime(data.get("start_date"), "%Y-%m-%d").date()
+
+        try:
+            end_date = datetime.strptime(data.get("end_date"), "%m/%d/%Y").date()
+        except ValueError:
+            end_date = datetime.strptime(data.get("end_date"), "%Y-%m-%d").date()
 
         # Defaults for time fields
         start_time = None
@@ -35,8 +46,17 @@ def add_goal(current_user):
             # Require start_time and end_time for daily goals
             if "start_time" not in data or "end_time" not in data:
                 return jsonify({"error": "Daily goals require start_time and end_time"}), 400
-            start_time = datetime.strptime(data.get("start_time"), "%H:%M:%S").time()
-            end_time = datetime.strptime(data.get("end_time"), "%H:%M:%S").time()
+
+            # Convert start_time and end_time from 12-hour format (AM/PM) to 24-hour format
+            try:
+                start_time_str = data.get("start_time")
+                end_time_str = data.get("end_time")
+
+                # Convert '01:01 AM' to '01:01:00'
+                start_time = datetime.strptime(start_time_str, "%I:%M %p").time()
+                end_time = datetime.strptime(end_time_str, "%I:%M %p").time()
+            except ValueError as ve:
+                return jsonify({"error": f"Invalid time format: {ve}"}), 400
         elif goal_type in ["monthly", "yearly"]:
             # Set default times for monthly and yearly goals
             start_time = time(0, 0, 0)  # Midnight
@@ -81,7 +101,7 @@ def add_goal(current_user):
 
         return jsonify({
             "message": "Goal added successfully",
-            "goal": new_goal.__todict()
+            "goal": new_goal.to_dict()
         }), 201
 
     except Exception as e:
@@ -90,7 +110,7 @@ def add_goal(current_user):
 @goal_bp.route('/getall', methods=['GET'])
 @token_required
 def get_all_goals(current_user):
-    user_id = request.args.get('userid')
+    user_id = current_user.get('user_id')
     if not user_id:
         return jsonify({"error": "Missing 'userid' query parameter"}), 400
 
@@ -109,7 +129,7 @@ def get_all_goals(current_user):
 @goal_bp.route('/daily', methods=['GET'])
 @token_required
 def get_daily_goals(current_user):
-    user_id = request.args.get('userid')
+    user_id = current_user.get('user_id')
     if not user_id:
         return jsonify({"error": "Missing 'userid' query parameter"}), 400
 
@@ -119,7 +139,7 @@ def get_daily_goals(current_user):
 
         return jsonify({
             "message": "Daily goals fetched successfully",
-            "goals": [goal.__todict() for goal in daily_goals]
+            "goals": [goal.to_dict() for goal in daily_goals]
         }), 200
 
     except Exception as e:
@@ -131,7 +151,7 @@ def get_monthly_goals(current_user):
     """
     Fetch all monthly goals of a user.
     """
-    user_id = request.args.get('userid')
+    user_id = current_user.get('user_id')
     if not user_id:
         return jsonify({"error": "Missing 'userid' query parameter"}), 400
 
@@ -151,7 +171,7 @@ def get_monthly_goals(current_user):
 @goal_bp.route('/yearly', methods=['GET'])
 @token_required
 def get_yearly_goals(current_user):
-    user_id = request.args.get('userid')
+    user_id = current_user.get('user_id')
     if not user_id:
         return jsonify({"error": "Missing 'userid' query parameter"}), 400
 
