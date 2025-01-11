@@ -50,10 +50,10 @@ def create_professional():
 
         # Generate JWT token
         token_data = {
-            'user_id': professional.id,
-            'role': 'Professional',
-            'exp': datetime.utcnow() + timedelta(seconds=current_app.config['JWT_EXPIRATION_DELTA'])
-        }
+            'user_id': new_user.id,
+            'role': "Professionals",
+            'exp': (datetime.utcnow() + timedelta(days=365)).timestamp()  # Set expiry to 1 year (365 days)
+            }
         token = jwt.encode(token_data, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
 
         # Convert professional object to dictionary for JSON response
