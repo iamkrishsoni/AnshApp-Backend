@@ -88,7 +88,7 @@ def signup():
         token_data = {
             'user_id': new_user.id,
             'role': new_user.role,
-            'exp': (datetime.utcnow() + timedelta(seconds=current_app.config['JWT_EXPIRATION_DELTA'])).timestamp()  # Convert to Unix timestamp
+            'exp': (datetime.utcnow() + timedelta(days=365)).timestamp()  # Set expiry to 1 year (365 days)
             }
 
         token = jwt.encode(token_data, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
