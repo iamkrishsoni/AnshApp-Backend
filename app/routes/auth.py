@@ -147,7 +147,7 @@ def signin():
     token_data = {
         'user_id': user.id,
         'role': user.role,
-        'exp': datetime.utcnow() + timedelta(seconds=current_app.config['JWT_EXPIRATION_DELTA'])
+        'exp': (datetime.utcnow() + timedelta(days=365)).timestamp()
     }
     token = jwt.encode(token_data, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
 
