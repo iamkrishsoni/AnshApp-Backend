@@ -40,12 +40,12 @@ case "$(uname)" in
     CYGWIN*|MSYS*)
         # transform D:\path\to\venv to /d/path/to/venv on MSYS
         # and to /cygdrive/d/path/to/venv on Cygwin
-        VIRTUAL_ENV=$(cygpath "/Users/ritikraushan/Downloads/ansh/AnshApp-Backend/venv")
+        VIRTUAL_ENV=$(cygpath "/Users/ritikraushan/Desktop/Ansh-App/AnshApp-Backend/venv")
         export VIRTUAL_ENV
         ;;
     *)
         # use the path as-is
-        export VIRTUAL_ENV="/Users/ritikraushan/Downloads/ansh/AnshApp-Backend/venv"
+        export VIRTUAL_ENV="/Users/ritikraushan/Desktop/Ansh-App/AnshApp-Backend/venv"
         ;;
 esac
 

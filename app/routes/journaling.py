@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify
 from ..models import Journaling, User, DailyActivity, BountyPoints, BugBountyWallet
 from ..db import db
 from ..utils import token_required
-from datetime import datetime
+from datetime import datetime, timedelta
 
 journaling_bp = Blueprint('journaling', __name__)
 
