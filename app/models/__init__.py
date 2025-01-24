@@ -17,3 +17,5 @@ from .visionboard import VisionBoard
 from .goals import Goals
 from .dailyActivity import DailyActivity
 from .notifications import Notifications
+from .mindfulness import Mindfulness
+from .appusage import AppUsage

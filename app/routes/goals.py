@@ -215,3 +215,33 @@ def update_goal_status(current_user,goal_id):
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@goal_bp.route('/delete/<int:goal_id>', methods=['DELETE'])
+@token_required
+def delete_goal(current_user, goal_id):
+    try:
+        # Fetch the goal by ID
+        goal = Goals.query.filter_by(id=goal_id).first()
+        
+        if not goal:
+            return jsonify({"error": f"Goal with ID {goal_id} not found"}), 404
+
+        # Ensure the current user is the owner of the goal, if applicable (optional step based on business logic)
+        if goal.userid != current_user.get('user_id'):
+            return jsonify({"error": "Unauthorized access. You can only delete your own goals."}), 403
+
+        # Delete the goal from the database
+        db.session.delete(goal)
+        db.session.commit()
+
+        return jsonify({
+            "message": f"Goal with ID {goal_id} deleted successfully"
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+    
+    # Print the error to the console
+        print(f"Error: {str(e)}")
+    
+        return jsonify({"error": str(e)}), 500

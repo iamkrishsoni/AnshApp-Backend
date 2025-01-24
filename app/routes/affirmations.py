@@ -157,7 +157,7 @@ def get_daily_affirmations(current_user):
     if not user:
         return jsonify({"message": "User not found"}), 404
 
-    daily_affirmations = DailyAffirmation.query.filter_by(user_id=user_id).all()
+    daily_affirmations = DailyAffirmation.query.filter_by(user_id=userid).all()
     if not daily_affirmations:
         return jsonify({"message": "No daily affirmations found"}), 404
 
@@ -232,6 +232,26 @@ def update_permanent_affirmation(current_user, id):
     try:
         db.session.commit()
         return jsonify({"message": "Permanent affirmation updated successfully"}), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        return jsonify({"message": str(e)}), 500
+
+@affirmation_bp.route('/permanent/<int:id>', methods=['DELETE'])
+@token_required
+def delete_permanent_affirmation(current_user, id):
+    # Retrieve the user ID from the current_user object
+    userid = current_user.get('user_id')
+
+    # Find the permanent affirmation by ID and user ID
+    affirmation = PermanentAffirmation.query.filter_by(id=id, user_id=userid).first()
+    if not affirmation:
+        return jsonify({"message": "Affirmation not found"}), 404
+
+    # Delete the affirmation from the database
+    try:
+        db.session.delete(affirmation)
+        db.session.commit()
+        return jsonify({"message": "Permanent affirmation deleted successfully"}), 200
     except SQLAlchemyError as e:
         db.session.rollback()
         return jsonify({"message": str(e)}), 500

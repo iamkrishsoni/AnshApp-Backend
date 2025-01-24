@@ -1,2 +1,3 @@
 from .reminder_service import schedule_reminder_notifications
 from .schedule_service import schedule_session_notifications
+from .goal_service import update_goal_status_automatically

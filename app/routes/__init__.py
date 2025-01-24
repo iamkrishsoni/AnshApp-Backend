@@ -14,6 +14,7 @@ def register_routes(app):
     from .mindfulness import mindfulness_bp
     from .extras import extras_bp
     from .notifications import notifications_bp
+    from .appusage import app_usage_bp
     
     app.register_blueprint(auth_bp, url_prefix='/auth')
     app.register_blueprint(user_bp, url_prefix='/user')
@@ -29,5 +30,6 @@ def register_routes(app):
     app.register_blueprint(mindfulness_bp, url_prefix = '/mindfulness')
     app.register_blueprint(extras_bp, url_prefix = '/new')
     app.register_blueprint(notifications_bp, url_prefix='/notifications')
+    app.register_blueprint(app_usage_bp, url_prefix='/app-usage')
     
 

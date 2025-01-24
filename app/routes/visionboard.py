@@ -151,3 +151,30 @@ def update_vision_board(current_user, board_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400
+
+
+@vision_board_bp.route('/delete/<int:board_id>', methods=['DELETE'])
+@token_required
+def delete_vision_board(current_user, board_id):
+    try:
+        # Find the VisionBoard by its ID
+        vision_board = VisionBoard.query.get(board_id)
+
+        # Check if the VisionBoard exists
+        if not vision_board:
+            return jsonify({"message": "VisionBoard not found!"}), 404
+
+        # Ensure the current user owns the vision board
+        if vision_board.user_id != current_user.get('user_id'):
+            return jsonify({"message": "Unauthorized access! You can only delete your own VisionBoard."}), 403
+
+        # Delete the VisionBoard
+        db.session.delete(vision_board)
+        
+        # Commit the changes to the database
+        db.session.commit()
+
+        return jsonify({"message": "VisionBoard deleted successfully!"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 400

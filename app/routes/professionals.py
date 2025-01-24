@@ -50,7 +50,7 @@ def create_professional():
 
         # Generate JWT token
         token_data = {
-            'user_id': new_user.id,
+            'user_id': professional.id,
             'role': "Professionals",
             'exp': (datetime.utcnow() + timedelta(days=365)).timestamp()  # Set expiry to 1 year (365 days)
             }

@@ -5,6 +5,7 @@ from .db import db
 from .models import *
 from flask_cors import CORS
 from .routes import register_routes
+from .services import schedule_reminder_notifications, schedule_session_notifications, update_goal_status_automatically
 
 def create_app():
     app = Flask(__name__)
@@ -25,5 +26,6 @@ def create_app():
     # Register the routes
     
     register_routes(app)
+    update_goal_status_automatically()
 
     return app

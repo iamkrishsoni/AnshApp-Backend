@@ -36,10 +36,10 @@ def update_user(current_user):
     print(data)
 
     # Validate input data
-    errors = user_schema.validate(data)
-    if errors:
-        print("Validation errors:", errors)  # Log errors for debugging
-        return jsonify(errors), 400
+    # errors = user_schema.validate(data)
+    # if errors:
+    #     print("Validation errors:", errors)  # Log errors for debugging
+    #     return jsonify(errors), 400
 
     user = User.query.get(userid)
 
@@ -64,6 +64,7 @@ def update_user(current_user):
     user.user_gender = data.get("user_gender", user.user_gender)
     user.location = data.get("location", user.location)
     user.avatar = data.get("avatar", user.avatar)
+    user.hashed_password = data.get("password", user.hashed_password)
 
     try:
         db.session.commit()

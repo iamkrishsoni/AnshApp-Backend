@@ -14,9 +14,20 @@ def update_bounty_points():
         user_id = data.get('user_id')
         category = data.get('category')
         points = data.get('points')
-        
+
         if not all([wallet_id, user_id, category, points]):
             return jsonify({'error': 'All fields are required'}), 400
+
+        # Get today's date to check if the points have already been added for the same category
+        today_date = datetime.utcnow().date()
+
+        # Query the database for an existing record for the same user, wallet, category, and today's date
+        existing_bounty = BountyPoints.query.filter_by(wallet_id=wallet_id, user_id=user_id, category=category).filter(
+            BountyPoints.date == today_date).first()
+
+        if existing_bounty:
+            # If points have already been added for today and the same category
+            return jsonify({'message': 'Bounty Already Added'}), 200
 
         # Query the database for an existing record
         bounty = BountyPoints.query.filter_by(wallet_id=wallet_id, user_id=user_id, category=category).first()

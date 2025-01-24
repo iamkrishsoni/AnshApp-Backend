@@ -22,6 +22,7 @@ class User(db.Model):
     mobile_verified = db.Column(db.Boolean, default=False)
     term_conditions_signed = db.Column(db.Boolean, default=False)
     is_anonymous = db.Column(db.String(10), default='no')
+    plan= db.Column(db.String(255), default='basic')
     user_status = db.Column(db.Integer, nullable=False, default=1)
     sign_up_date = db.Column(db.String(50))
     permanent_affirmation = db.relationship('PermanentAffirmation', back_populates='user', uselist=False)
@@ -55,6 +56,7 @@ class User(db.Model):
             "is_anonymous": self.is_anonymous,
             "user_status": self.user_status,
             "sign_up_date": self.sign_up_date,
+            "surname":self.surname,
             "device": self.device.to_dict() if self.device else None
         }
 
