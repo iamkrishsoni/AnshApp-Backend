@@ -38,7 +38,7 @@ class Professional(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
-            "avatar":self.avatar,
+            "avatar": self.avatar,
             "role": self.type,
             "specialty": self.specialty,
             "soft_skills": self.soft_skills,
@@ -52,12 +52,13 @@ class Professional(db.Model):
             "user_name": self.user_name,
             "email": self.email,
             "phone": self.phone,
-            "date_of_birth": self.date_of_birth,
+            "date_of_birth": self.date_of_birth.isoformat() if self.date_of_birth else None,  # Convert to string
             "user_gender": self.user_gender,
             "location": self.location,
             "email_verified": self.email_verified,
             "mobile_verified": self.mobile_verified,
             "term_conditions_signed": self.term_conditions_signed,
-            "sign_up_date": self.sign_up_date,
+            "sign_up_date": str(self.sign_up_date) if self.sign_up_date else None,  # Ensure string format
             "user_status": self.user_status,
         }
+  
