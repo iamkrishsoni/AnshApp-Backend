@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from ..models import OTP, User, BountyPoints, BugBountyWallet, Professional, ExpiredToken, Device
+from ..models import OTP, User, BountyPoints, BugBountyWallet, Professional, ExpiredToken, Device, RefreshToken
 from ..db import db
 import jwt
 from sqlalchemy.exc import SQLAlchemyError
@@ -11,6 +11,16 @@ from .aws import send_email, send_sms
 
 auth_bp = Blueprint('auth', __name__)
 
+ACCESS_TOKEN_EXPIRY = timedelta(days=7)
+REFRESH_TOKEN_EXPIRY = timedelta(days=90)
+
+def generate_jwt_token(user, expires_in):
+    payload = {
+        "user": user.to_dict(),
+        "role":"user",
+        "exp": (datetime.utcnow() + expires_in).timestamp()
+    }
+    return jwt.encode(payload, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
 
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
@@ -81,19 +91,14 @@ def signup():
         )
         db.session.add(bug_bounty_wallet)
 
-        # Commit all changes
+        token = generate_jwt_token(new_user, ACCESS_TOKEN_EXPIRY)
+        refresh_token = generate_jwt_token(new_user, REFRESH_TOKEN_EXPIRY)
+        
+        RefreshToken.revoke_old_tokens(new_user.id, role)
+        new_refresh_token = RefreshToken(user_id=new_user.id, token=refresh_token, role=role)
+        db.session.add(new_refresh_token)
         db.session.commit()
-
-        # Generate JWT token
-        token_data = {
-            'user_id': new_user.id,
-            'role': new_user.role,
-            'exp': (datetime.utcnow() + timedelta(days=365)).timestamp()  # Set expiry to 1 year (365 days)
-            }
-
-        token = jwt.encode(token_data, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
-
-        # Return full user data
+        
         return jsonify({
             "message": "New registration successful",
             "user": new_user.to_dict(),  # Return full user object
@@ -110,7 +115,8 @@ def signup():
                     }
                 ]
             },
-            "token": token
+            "token": token,
+            "refresh-token":refresh_token
         }), 201
 
     except SQLAlchemyError as e:
@@ -129,7 +135,6 @@ def signin():
     if not email and not phone:
         return jsonify({"message": "Either email or phone number must be provided"}), 400
 
-    # Dynamically filter based on email or phone
     user = None
     if email:
         user = User.query.filter_by(email=email).first()
@@ -139,25 +144,22 @@ def signin():
     if user is None:
         return jsonify({"message": "User not found"}), 404
 
-    # Check if the provided password is correct
     if not user.check_password(password):
         return jsonify({"message": "Invalid password"}), 401
 
-    # Generate JWT token
-    token_data = {
-        'user_id': user.id,
-        'role': user.role,
-        'exp': (datetime.utcnow() + timedelta(days=365)).timestamp()
-    }
-    token = jwt.encode(token_data, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
+    token = generate_jwt_token(user, ACCESS_TOKEN_EXPIRY)
+    refresh_token = generate_jwt_token(user, REFRESH_TOKEN_EXPIRY)
 
-    # Retrieve the bug bounty wallet and points
+    RefreshToken.revoke_old_tokens(user.id, user.role)
+    new_refresh_token = RefreshToken(user_id=user.id, token=refresh_token, role=user.role)
+    db.session.add(new_refresh_token)
+    db.session.commit()
+
     bug_bounty_wallet = BugBountyWallet.query.filter_by(user_id=user.id).first()
 
     if not bug_bounty_wallet:
         return jsonify({"message": "User does not have a bounty wallet"}), 404
 
-    # Format bounty points
     bounty_points = [
         {
             "id": point.id,
@@ -168,17 +170,72 @@ def signin():
         } for point in bug_bounty_wallet.bounty_points
     ]
 
-    # Return full user data along with token and bug bounty wallet
     return jsonify({
         "message": "Login successful",
         "token": token,
-        "user": user.to_dict(),  # Ensure User model has a `to_dict` method for full user data
+        "refresh-token":refresh_token,
+        "user": user.to_dict(), 
         "bugBountyWallet": {
             "totalPoints": bug_bounty_wallet.total_points,
             "recommendedPoints": bug_bounty_wallet.recommended_points,
             "bountyPoints": bounty_points
         }
     }), 200
+
+@auth_bp.route('/refresh', methods=['POST'])
+def refresh():
+    token = request.headers.get('Authorization')
+    
+    if not token:
+        return jsonify({"message": "Token is missing."}), 401
+    
+    try:
+        # Extract the actual token from the Authorization header
+        token = token.split(" ")[1]
+
+        # Decode the access token
+        decoded_token = jwt.decode(token, current_app.config['JWT_SECRET_KEY'], algorithms=["HS256"])
+        user = decoded_token.get('user')  # Get the entire user object from the token
+        role = decoded_token.get('role')  # Access the role from the token
+
+        if not user or not role:
+            return jsonify({"message": "Invalid token structure.", "status": "Unauthorized"}), 401
+
+        # Check if the access token is in the expired tokens table
+        expired_token = ExpiredToken.query.filter_by(token=token).first()
+        if expired_token:
+            return jsonify({"message": "User has logged out", "status": "Logged out"}), 401
+        
+        # Check if the access token is expired
+        if datetime.utcfromtimestamp(decoded_token['exp']) < datetime.utcnow():
+            # Access token is expired, now check for the refresh token in the database
+            refresh_token = RefreshToken.query.filter_by(user_id=user['id'], role=role, revoked=False).first()
+            
+            if not refresh_token:
+                return jsonify({"message": "Refresh token not found or revoked.", "status": "Unauthorized"}), 401
+            
+            # Generate a new access token and refresh token
+            token = generate_jwt_token(user, ACCESS_TOKEN_EXPIRY)
+            refresh_token = generate_jwt_token(user, REFRESH_TOKEN_EXPIRY)
+        
+            RefreshToken.revoke_old_tokens(user.id, role)
+            new_refresh_token = RefreshToken(user_id=user.id, token=refresh_token, role=role)
+            db.session.add(new_refresh_token)
+            db.session.commit()
+
+            return jsonify({
+                "message": "New token generated",
+                "status": "New token",
+                "token": token,
+                "refresh-token": refresh_token  # Send the new refresh token
+            }), 200
+
+        return jsonify({"message": "Access token is still valid", "status": "Valid token"}), 200
+
+    except jwt.ExpiredSignatureError:
+        return jsonify({"message": "Access token has expired.", "status": "Expired"}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({"message": "Invalid access token.", "status": "Unauthorized"}), 401
 
 
 @auth_bp.route('/forgot-password', methods=['POST'])
@@ -531,30 +588,30 @@ def add_bounty_points(current_user):
 
 @auth_bp.route('/signout', methods=['POST'])
 def signout():
-    # Extract the token from the request header
-    token = request.headers['Authorization'].split(" ")[1]
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return jsonify({"message": "Token is missing or invalid."}), 401
+
+    token = auth_header.split(" ")[1]
     print("Received token:", token)
-    # if token and token.startswith("Bearer "):
-    #     token = token.split(" ")[1]
-    
-    if not token:
-        return jsonify({"message": "Token is missing."}), 401
 
     try:
-        # Decode the JWT token
+        # Decode JWT access token
         decoded_token = jwt.decode(token, current_app.config['JWT_SECRET_KEY'], algorithms=["HS256"])
-        user_id = decoded_token.get('user_id')  # Assuming 'user_id' is in the token payload
-        
-        # Check if token is already blacklisted
-        # if is_token_blacklisted(token):
-        #     return jsonify({"message": "Token is already invalidated."}), 401
+        user_id = decoded_token["user"]["id"]  # Extract user ID
+        role = decoded_token["role"]  # Extract user role
 
-        # Add the token to the blacklist
+        # Blacklist the access token (store in database)
         expired_token = ExpiredToken(token=token, expiration_date=datetime.utcnow())
         db.session.add(expired_token)
+
+        # Revoke all refresh tokens for this user & role
+        RefreshToken.revoke_old_tokens(user_id, role)
+
+        # Commit changes
         db.session.commit()
 
-        return jsonify({"message": "Successfully signed out"}), 200
+        return jsonify({"message": "Successfully signed out."}), 200
 
     except jwt.ExpiredSignatureError:
         return jsonify({"message": "Token has already expired."}), 401

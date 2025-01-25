@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from werkzeug.security import generate_password_hash, check_password_hash
-from ..models import Professional, BountyPoints
+from ..models import Professional, BountyPoints, RefreshToken
 from ..db import db
 from ..utils import token_required  
 from sqlalchemy.exc import SQLAlchemyError
@@ -10,6 +10,17 @@ from datetime import datetime, timedelta
 import jwt
 
 professional_bp = Blueprint('professional', __name__)
+
+ACCESS_TOKEN_EXPIRY = timedelta(days=7)
+REFRESH_TOKEN_EXPIRY = timedelta(days=90)
+
+def generate_jwt_token(user,role, expires_in):
+    payload = {
+        "user": user.to_dict(),
+        "role":role,
+        "exp": (datetime.utcnow() + expires_in).timestamp()
+    }
+    return jwt.encode(payload, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
 
 @professional_bp.route('/professionals', methods=['POST'])
 def create_professional():
@@ -41,36 +52,24 @@ def create_professional():
             phone=data.get('phone'),
             hashed_password=hashed_password,
             type=data.get('role', 'professional'),  # Default to 'professional'
-            sign_up_date=datetime.utcnow(),
+            sign_up_date=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
             user_status=1  # Default active status
         )
 
         db.session.add(professional)
-        db.session.commit()  # Commit the professional creation
+        db.session.flush()  # Commit the professional creation
 
-        # Generate JWT token
-        token_data = {
-            'user_id': professional.id,
-            'role': "Professionals",
-            'exp': (datetime.utcnow() + timedelta(days=365)).timestamp()  # Set expiry to 1 year (365 days)
-            }
-        token = jwt.encode(token_data, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
-
-        # Convert professional object to dictionary for JSON response
-        professional_data = {
-            "id": professional.id,
-            "email": professional.email,
-            "phone": professional.phone,
-            "userName": professional.user_name,
-            "type": professional.type,
-            "signUpDate": professional.sign_up_date,
-            "userStatus": professional.user_status
-        }
-
+        token = generate_jwt_token(professional, professional.type, ACCESS_TOKEN_EXPIRY)
+        refresh_token = generate_jwt_token(professional, professional.type, REFRESH_TOKEN_EXPIRY)
+        RefreshToken.revoke_old_tokens(professional.id, "Professional")
+        new_refresh_token = RefreshToken(user_id=professional.id, token=refresh_token, role="Professional")
+        db.session.add(new_refresh_token)
+        db.session.commit()
         return jsonify({
             "message": "Professional account created successfully",
             "user": professional.to_dict(),
-            "token": token
+            "token": token,
+            "refresh-token":refresh_token
         }), 201
     except Exception as e:
         print(str(e))
@@ -198,18 +197,17 @@ def signin():
     if user.hashed_password != password:
         return jsonify({"message": "Invalid password"}), 401
 
-    # Generate JWT token
-    token_data = {
-        'user_id': user.id,
-        'role': "Professional",
-        'exp': (datetime.utcnow() + timedelta(days=365)).timestamp()
-    }
-    token = jwt.encode(token_data, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
-
+    token = generate_jwt_token(user, user.type, ACCESS_TOKEN_EXPIRY)
+    refresh_token = generate_jwt_token(user, user.type, REFRESH_TOKEN_EXPIRY)
+    RefreshToken.revoke_old_tokens(user.id, "Professional")
+    new_refresh_token = RefreshToken(user_id=user.id, token=refresh_token, role="Professional")
+    db.session.add(new_refresh_token)
+    db.session.commit()
 
     # Return full user data along with token and bug bounty wallet
     return jsonify({
         "message": "Login successful",
+        "refresh_token":refresh_token,
         "token": token,
         "user": user.to_dict()
     }), 200

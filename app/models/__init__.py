@@ -19,3 +19,4 @@ from .dailyActivity import DailyActivity
 from .notifications import Notifications
 from .mindfulness import Mindfulness
 from .appusage import AppUsage
+from .refreshtoken import RefreshToken
