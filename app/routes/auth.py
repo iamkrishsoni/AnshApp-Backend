@@ -607,7 +607,6 @@ def signout():
 
         # Revoke all refresh tokens for this user & role
         RefreshToken.revoke_old_tokens(user_id, role)
-
         # Commit changes
         db.session.commit()
 

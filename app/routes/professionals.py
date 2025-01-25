@@ -112,7 +112,6 @@ def get_professional(current_user,id):
 @professional_bp.route('/professionals/<int:id>', methods=['PUT'])
 @token_required
 def update_professional(current_user,id):
-    """Update a professional account by ID."""
     data = request.json
     professional = Professional.query.get(id)
     if not professional:
@@ -132,7 +131,16 @@ def update_professional(current_user,id):
         professional.user_name = data.get('userName', professional.user_name)
         professional.email = data.get('email', professional.email)
         professional.phone = data.get('phone', professional.phone)
-        professional.date_of_birth = data.get('dateOfBirth', professional.date_of_birth)
+        dob_str = data.get("dateOfBirth", professional.date_of_birth)
+
+        # Convert only if dob_str is a string and not None
+        if isinstance(dob_str, str):
+            try:
+                dob_obj = datetime.strptime(dob_str, "%d/%m/%Y")  # Convert DD/MM/YYYY to a datetime object
+                dob_str = dob_obj.date()  # Convert to date object for SQLAlchemy
+            except ValueError:
+                pass  # Keep the existing value if the format is incorrect
+        professional.date_of_birth = dob_str
         professional.user_gender = data.get('userGender', professional.user_gender)
         professional.location = data.get('location', professional.location)
         professional.email_verified = data.get('emailVerified', professional.email_verified)
@@ -146,6 +154,7 @@ def update_professional(current_user,id):
             "user": professional.to_dict(),
         }), 200
     except Exception as e:
+        print({str(e)})
         return jsonify({"error": str(e)}), 400
 
 
