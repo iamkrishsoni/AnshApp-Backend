@@ -39,7 +39,7 @@ class Professional(db.Model):
         return {
             "id": self.id,
             "avatar":self.avatar,
-            "type": self.type,
+            "role": self.type,
             "specialty": self.specialty,
             "soft_skills": self.soft_skills,
             "resume": self.resume,
