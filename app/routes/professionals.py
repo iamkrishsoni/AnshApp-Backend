@@ -16,6 +16,7 @@ REFRESH_TOKEN_EXPIRY = timedelta(days=90)
 
 def generate_jwt_token(user,role, expires_in):
     payload = {
+        "user_id": user.id,
         "user": user.to_dict(),
         "role":role,
         "exp": (datetime.utcnow() + expires_in).timestamp()
