@@ -14,6 +14,7 @@ class PermanentAffirmation(db.Model):
     affirmation_type = db.Column(db.String(50), nullable=True)  # Type of affirmation (e.g., motivational, gratitude)
     isdark = db.Column(db.Boolean, default=False)  # Indicates if the background is dark
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.relationship('User', back_populates='permanent_affirmation')
 
     def __init__(self, affirmation_text, user_id, reminder_active=False, reminder_time=None, bg_type=None, bg_image=None, bg_video=None, affirmation_type=None, isdark=False):
@@ -26,6 +27,7 @@ class PermanentAffirmation(db.Model):
         self.bg_video = bg_video
         self.affirmation_type = affirmation_type
         self.isdark = isdark
+        self.created_at = datetime.utcnow()
 
     def to_dict(self):
         return {
@@ -38,5 +40,6 @@ class PermanentAffirmation(db.Model):
             "bg_video": self.bg_video,
             "affirmation_type": self.affirmation_type,
             "isdark": self.isdark,
-            "user_id": self.user_id
+            "user_id": self.user_id,
+            "created_at": self.created_at.isoformat(), 
         }

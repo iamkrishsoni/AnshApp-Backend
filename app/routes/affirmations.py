@@ -124,51 +124,64 @@ def create_permanent_affirmation(current_user):
 @affirmation_bp.route('/daily', methods=['POST'])
 @token_required
 def create_daily_affirmation(current_user):
-    data = request.get_json()
-    user_id = data.get('user_id')
-    affirmation_text = data.get('affirmation_text')
-    reminder_active = data.get('reminder_active', False)
-    reminder_time = data.get('reminder_time')
-
-    user = User.query.get(user_id)
-    if not user:
-        return jsonify({"message": "User not found"}), 404
-
-    daily_affirmation = DailyAffirmation(
-        affirmation_text=affirmation_text,
-        user_id=user_id,
-        reminder_active=reminder_active,
-        reminder_time=reminder_time
-    )
     try:
+        data = request.get_json()
+        
+        user_id = current_user.get('user_id')
+        affirmation_text = data.get('affirmation_text')
+        reminder_active = data.get('reminder_active', False)
+        reminder_time = data.get('reminder_time')
+        bg_image = data.get('bg_image')  # Optional background image
+        liked = data.get('liked', True)  # Default to False
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"message": "User not found"}), 404
+
+        daily_affirmation = DailyAffirmation(
+            affirmation_text=affirmation_text,
+            user_id=user_id,
+            reminder_active=reminder_active,
+            reminder_time=reminder_time,
+            bg_image=bg_image,
+            liked=liked # Explicitly setting the timestamp
+        )
+
         db.session.add(daily_affirmation)
         db.session.commit()
-        return jsonify({"message": "Daily affirmation created successfully"}), 201
+
+        return jsonify({
+            "message": "Daily affirmation created successfully",
+            "affirmation": daily_affirmation.to_dict()
+        }), 201
+
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({"message": str(e)}), 500
-
+        return jsonify({"message": "Database error", "error": str(e)}), 500
+    except Exception as e:
+        return jsonify({"message": "An unexpected error occurred", "error": str(e)}), 500
 # Route for getting Daily Affirmations for a user
 @affirmation_bp.route('/daily', methods=['GET'])
 @token_required
 def get_daily_affirmations(current_user):
-    userid = current_user.get('user_id')
-    user = User.query.get(userid)
-    if not user:
-        return jsonify({"message": "User not found"}), 404
+    try:
+        user_id = current_user.get('user_id')
 
-    daily_affirmations = DailyAffirmation.query.filter_by(user_id=userid).all()
-    if not daily_affirmations:
-        return jsonify({"message": "No daily affirmations found"}), 404
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"message": "User not found"}), 404
 
-    affirmations_list = [{
-        "affirmation_text": aff.affirmation_text,
-        "date": aff.date,
-        "reminder_active": aff.reminder_active,
-        "reminder_time": aff.reminder_time
-    } for aff in daily_affirmations]
+        daily_affirmations = DailyAffirmation.query.filter_by(user_id=user_id).all()
+        if not daily_affirmations:
+            return jsonify({"message": "No daily affirmations found"}), 404
 
-    return jsonify(affirmations_list), 200
+        return jsonify({
+            "message": "Daily affirmations retrieved successfully",
+            "affirmations": [aff.to_dict() for aff in daily_affirmations]
+        }), 200
+
+    except Exception as e:
+        return jsonify({"message": "An unexpected error occurred", "error": str(e)}), 500
 
 # Route for getting Permanent Affirmations for a user
 @affirmation_bp.route('/permanent', methods=['GET'])
@@ -255,3 +268,47 @@ def delete_permanent_affirmation(current_user, id):
     except SQLAlchemyError as e:
         db.session.rollback()
         return jsonify({"message": str(e)}), 500
+
+@affirmation_bp.route('/daily/<int:id>', methods=['PUT'])
+@token_required
+def update_daily_affirmation(current_user, id):
+    try:
+        data = request.get_json()
+        user_id = current_user.get('user_id')
+
+        daily_affirmation = DailyAffirmation.query.filter_by(id=id, user_id=user_id).first()
+        if not daily_affirmation:
+            return jsonify({"message": "Affirmation not found"}), 404
+
+        # Update fields if provided
+        daily_affirmation.affirmation_text = data.get("affirmation_text", daily_affirmation.affirmation_text)
+        daily_affirmation.bg_image = data.get("bg_image", daily_affirmation.bg_image)
+        daily_affirmation.reminder_active = data.get("reminder_active", daily_affirmation.reminder_active)
+        daily_affirmation.reminder_time = data.get("reminder_time", daily_affirmation.reminder_time)
+        daily_affirmation.liked = data.get("liked", daily_affirmation.liked)
+        daily_affirmation.updated_at = datetime.utcnow()  # Update the timestamp
+
+        db.session.commit()
+        return jsonify({"message": "Daily affirmation updated successfully", "affirmation": daily_affirmation.to_dict()}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "An error occurred while updating the affirmation", "error": str(e)}), 500
+
+@affirmation_bp.route('/daily/<int:id>', methods=['DELETE'])
+@token_required
+def delete_daily_affirmation(current_user, id):
+    try:
+        user_id = current_user.get('user_id')
+
+        daily_affirmation = DailyAffirmation.query.filter_by(id=id, user_id=user_id).first()
+        if not daily_affirmation:
+            return jsonify({"message": "Affirmation not found"}), 404
+
+        db.session.delete(daily_affirmation)
+        db.session.commit()
+        return jsonify({"message": "Daily affirmation deleted successfully"}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "An error occurred while deleting the affirmation", "error": str(e)}), 500
