@@ -55,6 +55,7 @@ class User(db.Model):
             "term_conditions_signed": self.term_conditions_signed,
             "is_anonymous": self.is_anonymous,
             "user_status": self.user_status,
+            "plan": self.plan,
             "sign_up_date": self.sign_up_date,
             "surname":self.surname,
             "device": self.device.to_dict() if self.device else None
