@@ -21,6 +21,11 @@ class User(db.Model):
     email_verified = db.Column(db.Boolean, default=False)
     mobile_verified = db.Column(db.Boolean, default=False)
     term_conditions_signed = db.Column(db.Boolean, default=False)
+    affirmation_onboarding = db.Column(db.Boolean, default=False)
+    journaling_onboarding = db.Column(db.Boolean, default=False)
+    visionboard_onboarding = db.Column(db.Boolean, default=False)
+    app_onboarding = db.Column(db.Boolean, default=False)
+    buddy_onboarding = db.Column(db.Boolean, default=False)
     is_anonymous = db.Column(db.String(10), default='no')
     plan= db.Column(db.String(255), default='basic')
     user_status = db.Column(db.Integer, nullable=False, default=1)
@@ -33,6 +38,7 @@ class User(db.Model):
     bug_bounty_wallet = db.relationship('BugBountyWallet', back_populates='user', uselist=False)
     schedules = db.relationship('Schedule', back_populates='user')
     device = db.relationship('Device', back_populates='user', uselist=False)
+    
     def set_password(self, password):
         self.hashed_password = generate_password_hash(password)
 
@@ -58,6 +64,11 @@ class User(db.Model):
             "plan": self.plan,
             "sign_up_date": self.sign_up_date,
             "surname":self.surname,
+            "affirmation_onboarding":self.affirmation_onboarding,
+            "journaling_onboarding":self.journaling_onboarding,
+            "visionboard_onboarding":self.visionboard_onboarding,
+            "app_onboarding":self.app_onboarding,
+            "buddy_onboarding":self.buddy_onboarding,
             "device": self.device.to_dict() if self.device else None
         }
 

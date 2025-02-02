@@ -176,6 +176,40 @@ def delete_user(current_user):
         print(f"Database Error: {e}")  # Log the error for debugging
         return jsonify({"message": "An error occurred while deleting the user"}), 500
 
+@user_bp.route("/users/onboarding", methods=["PATCH"])
+@token_required
+def update_onboarding_status(current_user):
+    if not current_user:
+        return jsonify({"message": "Unauthorized access"}), 401
+
+    userid = current_user.get('user_id')  # Assuming `current_user` contains the user ID
+    data = request.get_json()
+    
+    # Validate input data
+    onboarding_field = data.get("onboarding_field")
+    if onboarding_field not in ["affirmation_onboarding", "journaling_onboarding", "visionboard_onboarding", "app_onboarding", "buddy_onboarding"]:
+        return jsonify({"message": "Invalid onboarding field"}), 400
+
+    # Retrieve the user
+    user = User.query.get(userid)
+
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    # Set the relevant onboarding field to True
+    setattr(user, onboarding_field, True)
+
+    try:
+        db.session.commit()
+
+        return jsonify({
+            "message": f"{onboarding_field} updated successfully",
+            "user": user.to_dict()  # Convert user object to dictionary
+        }), 200
+    except SQLAlchemyError as e:
+        db.session.rollback()
+        print(f"Database Error: {e}")  # Log the error for debugging
+        return jsonify({"message": "An error occurred while updating the onboarding status"}), 500
 
 
 @user_bp.route("/user/bountypoints", methods=["POST"])
