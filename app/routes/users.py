@@ -224,7 +224,7 @@ def update_bounty_points(current_user):
         wallet_id = data.get('wallet_id')
         category = data.get('category')
         points = data.get('points')
-        name = data.get('name')  # Include 'name' explicitly
+        name = data.get('name')
 
         # Validate input
         if not all([wallet_id, category, points, name]):
@@ -235,6 +235,17 @@ def update_bounty_points(current_user):
             points = int(points)
         except ValueError:
             return jsonify({'error': "'points' must be an integer"}), 400
+
+        # Get today's date in the format 'yyyy-mm-dd'
+        today = datetime.utcnow().date()
+
+        # Check if a record already exists for the same date, user, wallet, and category
+        existing_bounty = BountyPoints.query.filter_by(
+            wallet_id=wallet_id, user_id=userId, category=category
+        ).filter(BountyPoints.date == today).first()
+
+        if existing_bounty:
+            return jsonify({'error': 'Bounty points have already been added for today'}), 409
 
         # Check if a record already exists for the user, wallet, and category
         bounty = BountyPoints.query.filter_by(wallet_id=wallet_id, user_id=userId, category=category).first()
@@ -267,7 +278,6 @@ def update_bounty_points(current_user):
         db.session.rollback()
         print(f"Error: {e}")  # Log the error for debugging
         return jsonify({'error': 'An error occurred while updating bounty points'}), 500
-    
 
 # Fetch bounty points for a user
 @user_bp.route("/user/bountypoints", methods=["GET"])
