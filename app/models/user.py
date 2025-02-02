@@ -38,7 +38,7 @@ class User(db.Model):
     bug_bounty_wallet = db.relationship('BugBountyWallet', back_populates='user', uselist=False)
     schedules = db.relationship('Schedule', back_populates='user')
     device = db.relationship('Device', back_populates='user', uselist=False)
-    
+    bounty_milestone = db.relationship('BountyMilestone', back_populates='user',uselist=False)
     def set_password(self, password):
         self.hashed_password = generate_password_hash(password)
 

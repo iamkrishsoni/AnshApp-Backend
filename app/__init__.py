@@ -16,8 +16,6 @@ def create_app():
 
     # Initialize database
     db.init_app(app)
-
-
     
     # Ensure the tables are created at the start (in app context)
     with app.app_context():

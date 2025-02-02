@@ -1,11 +1,13 @@
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash
-from ..models import User, BountyPoints, BugBountyWallet, DailyActivity
+from ..models import User, BountyPoints, BugBountyWallet, DailyActivity, BountyMilestone
 from ..db import db
 from ..utils import token_required  
 from sqlalchemy.exc import SQLAlchemyError
 from marshmallow import Schema, fields, validate
 from datetime import datetime
+from sqlalchemy.sql import func
+from collections import defaultdict
 
 user_bp = Blueprint('users', __name__)
 bounty_points_bp = Blueprint('bounty_points', __name__)
@@ -272,29 +274,49 @@ def update_bounty_points(current_user):
 @token_required
 def get_bounty_points(current_user):
     userId = current_user.get('user_id')
-    # Fetch all bounty points for the user
-    bounty_points = BountyPoints.query.filter_by(user_id=userId).all()
 
-    if not bounty_points:
-        return jsonify({"message": "No bounty points found for the user"}), 404
-
-    # Return all records for the user
-    result = [
-        {
-            "id": bp.id,
-            "name": bp.name,
-            "wallet_id": bp.wallet_id,
-            "category": bp.category,
-            "points": bp.points,
-            "lastAddedPoints": bp.last_added_points,
-            "recommendedPoints": bp.recommended_points,
-            "date": bp.date.strftime("%d/%m/%Y"),
+    # Fetch bounty points grouped by month and category
+    bounty_points = (
+        db.session.query(
+            func.to_char(BountyPoints.date, 'YYYY-MM').label("month"),  # Use TO_CHAR instead of strftime
+            BountyPoints.category,
+            func.sum(BountyPoints.points).label("total_points"),
+            func.sum(BountyPoints.recommended_points).label("total_recommended")
+        )
+        .filter(BountyPoints.user_id == userId)
+        .group_by("month", BountyPoints.category)
+        .order_by("month")
+        .all()
+    )
+    # Fetch claimed milestones for the user
+    claimed_milestones = (
+        db.session.query(BountyMilestone)
+        .filter(BountyMilestone.user_id == userId)
+        .all()
+    )
+    # Convert claimed milestones into a lookup table
+    claimed_status = defaultdict(lambda: {1000: False, 2500: False, 5000: False, 10000: False})
+    for milestone in claimed_milestones:
+        month = milestone.date_achieved.strftime("%Y-%m")
+        claimed_status[month][milestone.milestone] = milestone.claimed
+    # Structure the response
+    result = defaultdict(lambda: {"total_points": 0, "categories": {}, "rewards": {}})
+    for bp in bounty_points:
+        month = bp.month
+        category = bp.category
+        # Store total points and category-wise points
+        result[month]["total_points"] += bp.total_points
+        result[month]["categories"][category] = {
+            "points": bp.total_points,
+            "recommended_points": bp.total_recommended
         }
-        for bp in bounty_points
-    ]
-
+        # Check milestones for the month
+        for milestone in [1000, 2500, 5000, 10000]:
+            result[month]["rewards"][milestone] = {
+                "achieved": result[month]["total_points"] >= milestone,
+                "claimed": claimed_status[month][milestone]
+            }
     return jsonify(result), 200
-
 @user_bp.route("/user/bountywallet", methods=["GET"])
 @token_required
 def get_bounty_wallet(current_user):
@@ -339,6 +361,119 @@ def get_bounty_wallet(current_user):
         print(f"Error: {e}")  # Log the error for debugging
         return jsonify({'error': 'An error occurred while fetching the wallet'}), 500
 
+@user_bp.route("/user/bountypoints/monthly", methods=["GET"])
+@token_required
+def get_monthly_bounty_points(current_user):
+    user_id = current_user.get('user_id')
+
+    # Query bounty points grouped by month and category
+    monthly_bounty_points = (
+        db.session.query(
+            func.strftime("%Y-%m", BountyPoints.date).label("month"),  # Format date as "YYYY-MM"
+            BountyPoints.category,
+            func.sum(BountyPoints.points).label("total_points")
+        )
+        .filter_by(user_id=user_id)
+        .group_by("month", BountyPoints.category)
+        .order_by("month.desc()")  # Order by most recent month first
+        .all()
+    )
+
+    if not monthly_bounty_points:
+        return jsonify({"message": "No bounty points found for the user"}), 404
+
+    # Format response
+    result = {}
+    for row in monthly_bounty_points:
+        month = row.month
+        if month not in result:
+            result[month] = {"total_points": 0, "categories": {}}
+        result[month]["total_points"] += row.total_points
+        result[month]["categories"][row.category] = row.total_points
+
+    return jsonify(result), 200
+
+
+@user_bp.route("/milestone/claim", methods=["POST"])
+@token_required
+def claim_milestone(current_user):
+    user_id = current_user.get('user_id')
+    data = request.get_json()
+    milestone = data.get("milestone")
+
+    # Validate milestone value
+    valid_milestones = {1000, 2500, 5000, 10000}
+    if milestone not in valid_milestones:
+        return jsonify({"error": "Invalid milestone value"}), 400
+
+    # Get the current month and year
+    current_month = datetime.utcnow().strftime("%Y-%m")
+
+    # Calculate the total points earned by the user for the month
+    user_points = (
+        db.session.query(func.sum(BountyPoints.points))
+        .filter(
+            BountyPoints.user_id == user_id,
+            func.to_char(BountyPoints.date, "YYYY-MM") == current_month  # Updated this line
+        )
+        .scalar() or 0
+    )
+
+    # Check if the user has achieved the milestone
+    if user_points < milestone:
+        return jsonify({"error": f"User has only {user_points} points this month, milestone {milestone} not achieved"}), 400
+
+    # Check if milestone is already claimed for this month
+    record = BountyMilestone.query.filter_by(user_id=user_id, milestone=milestone).first()
+
+    if record and record.claimed:
+        return jsonify({"error": f"Milestone {milestone} already claimed"}), 400
+
+    try:
+        if not record:
+            # If no record exists, create a new one
+            record = BountyMilestone(
+                user_id=user_id,
+                milestone=milestone,
+                claimed=True,
+                date_achieved=datetime.utcnow()
+            )
+            db.session.add(record)
+        else:
+            # Otherwise, mark it as claimed
+            record.claimed = True
+        
+        db.session.commit()
+
+        return jsonify({
+            "message": f"Milestone {milestone} points reward claimed!",
+            "milestone": milestone,
+            "claimed": True,
+            "date_claimed": record.date_achieved.strftime("%d/%m/%Y"),
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()  # Rollback in case of error
+        print(f"Error: {e}")
+        return jsonify({"error": "An error occurred while claiming the milestone"}), 500
+
+@user_bp.route("/milestones", methods=["GET"])
+@token_required
+def get_user_milestones(current_user):
+    user_id = current_user.get('user_id')
+
+    milestones = BountyMilestone.query.filter_by(user_id=user_id).all()
+
+    result = [
+        {
+            "milestone": m.milestone,
+            "claimed": m.claimed,
+            "date_achieved": m.date_achieved.strftime("%d/%m/%Y"),
+        }
+        for m in milestones
+    ]
+
+    return jsonify(result), 200
 
 @user_bp.route('/get-daily-activities', methods=['GET'])
 @token_required
@@ -363,3 +498,46 @@ def get_daily_activities(current_user):
     print(activities_data)
     
     return jsonify(activities_data), 200
+
+def can_add_bounty_points(user_id, new_points, date):
+    month = date.strftime("%Y-%m")
+
+    # Get total points for the month
+    total_monthly_points = (
+        db.session.query(func.sum(BountyPoints.points))
+        .filter(
+            BountyPoints.user_id == user_id,
+            func.strftime("%Y-%m", BountyPoints.date) == month
+        )
+        .scalar() or 0  # Default to 0 if no points found
+    )
+
+    # Check if adding new points exceeds the limit
+    return (total_monthly_points + new_points) <= 10000
+
+def check_milestone_achievements(user_id):
+    total_points = (
+        db.session.query(func.sum(BountyPoints.points))
+        .filter_by(user_id=user_id)
+        .scalar() or 0
+    )
+
+    milestones = [1000, 2500, 5000, 10000]
+    achieved_milestones = (
+        db.session.query(BountyMilestone.milestone)
+        .filter(BountyMilestone.user_id == user_id, BountyMilestone.claimed == False)
+        .all()
+    )
+    
+    achieved_milestones = {m[0] for m in achieved_milestones}
+
+    for milestone in milestones:
+        if total_points >= milestone and milestone not in achieved_milestones:
+            new_milestone = BountyMilestone(
+                user_id=user_id,
+                milestone=milestone,
+                claimed=False
+            )
+            db.session.add(new_milestone)
+
+    db.session.commit()
