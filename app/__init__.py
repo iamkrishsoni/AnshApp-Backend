@@ -1,68 +1,38 @@
-from flask import Flask, current_app
+from flask import Flask
 from .config import Config
 from .db import db
 from .models import *
 from flask_cors import CORS
 import logging
 from .routes import register_routes
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
-from .services import update_goal_status_automatically
+from .socketio import socketio  # ✅ Import global SocketIO
+from .services import start_scheduler  # ✅ Import Scheduler
 
 def create_app():
     app = Flask(__name__)
     CORS(app)
 
-    # Set up logging to file and console
+    # ✅ Set up logging
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    
-    # Load configuration
+
+    # ✅ Load configuration
     app.config.from_object(Config)
 
-    # Initialize the database
+    # ✅ Initialize the database
     db.init_app(app)
 
-    # Ensure the tables are created at the start (in app context)
+    # ✅ Ensure tables are created
     with app.app_context():
         db.create_all()
 
-    # Register routes
+    # ✅ Register routes
     register_routes(app)
 
-    # Initialize the scheduler
-    scheduler = BackgroundScheduler()
+    # ✅ Attach Socket.IO to Flask app
+    socketio.init_app(app)
 
-    # Log the job being added
-    app.logger.info("Adding job 'goal_status_updater' to scheduler")
-    
-    # Wrap job in app context
-    def job_wrapper():
-        with app.app_context():  # Ensure app context is available
-            update_goal_status_automatically()  # Call the actual job function
-    
-    scheduler.add_job(
-        func=job_wrapper,  # Use the wrapper to ensure context is available
-        trigger=IntervalTrigger(minutes=1),  # Run every minute
-        id='goal_status_updater',
-        name='Update goal statuses automatically',
-        replace_existing=True
-    )
+    # ✅ Start the scheduler
+    start_scheduler(app)
 
-    # Start the scheduler
-    try:
-        scheduler.start()
-        app.logger.info("Scheduler started successfully.")
-    except Exception as e:
-        app.logger.error(f"Error starting scheduler: {str(e)}")
-
-    # Store the scheduler in the app context for global access
-    app.scheduler = scheduler
-
-    # Ensure the scheduler stays running and is not prematurely stopped
-    @app.before_request
-    def ensure_scheduler_running():
-        if not app.scheduler.running:
-            app.scheduler.start()
-            app.logger.info("Scheduler started before first request.")
 
     return app
