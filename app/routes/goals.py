@@ -187,6 +187,68 @@ def get_yearly_goals(current_user):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
+@goal_bp.route('/update/<int:goal_id>', methods=['PUT'])
+@token_required
+def update_goal(current_user, goal_id):
+    try:
+        data = request.get_json()
+
+        # Fetch the goal by ID and verify ownership
+        goal = Goals.query.filter_by(id=goal_id, userid=current_user.get("user_id")).first()
+        if not goal:
+            return jsonify({"error": "Goal not found or access denied"}), 404
+
+        # Validate input fields (but do NOT allow type change)
+        restricted_fields = ["id", "userid", "type"]  # Fields that cannot be changed
+
+        for field in data:
+            if field in restricted_fields:
+                return jsonify({"error": f"Field '{field}' cannot be modified"}), 400
+
+        # Update only allowed fields
+        if "title" in data:
+            goal.title = data["title"]
+        if "description" in data:
+            goal.description = data.get("description", None)
+        if "image" in data:
+            goal.image = data.get("image", None)
+
+        # Convert and update start_date and end_date if provided
+        if "start_date" in data:
+            try:
+                goal.start_date = datetime.strptime(data["start_date"], "%m/%d/%Y").date()
+            except ValueError:
+                goal.start_date = datetime.strptime(data["start_date"], "%Y-%m-%d").date()
+        if "end_date" in data:
+            try:
+                goal.end_date = datetime.strptime(data["end_date"], "%m/%d/%Y").date()
+            except ValueError:
+                goal.end_date = datetime.strptime(data["end_date"], "%Y-%m-%d").date()
+
+        # Handle start_time and end_time updates for daily goals only
+        if goal.type == "daily":
+            if "start_time" in data:
+                try:
+                    goal.start_time = datetime.strptime(data["start_time"], "%I:%M %p").time()
+                except ValueError:
+                    return jsonify({"error": "Invalid start_time format"}), 400
+            if "end_time" in data:
+                try:
+                    goal.end_time = datetime.strptime(data["end_time"], "%I:%M %p").time()
+                except ValueError:
+                    return jsonify({"error": "Invalid end_time format"}), 400
+
+        # Commit changes
+        db.session.commit()
+
+        return jsonify({
+            "message": "Goal updated successfully",
+            "goal": goal.to_dict()
+        }), 200
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @goal_bp.route('/<int:goal_id>/status', methods=['PATCH'])
 @token_required
 def update_goal_status(current_user,goal_id):

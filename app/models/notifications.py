@@ -7,17 +7,18 @@ class Notifications(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     title = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    navigation = db.Column(db.String(255), nullable=True)  # Navigation path or URL
+    navigation = db.Column(db.String(255), nullable=True)
     body = db.Column(db.Text, nullable=True)
-    image = db.Column(db.String(255), nullable=True)  # URL or path to the image
-    user_id = db.Column(db.Integer, nullable=False)  # Reference to the user receiving the notification
-    type = db.Column(db.String(50), nullable=False)  # Type of notification (e.g., info, alert)
-    service = db.Column(db.String(50), nullable=False)  # Service triggering the notification
-    status = db.Column(db.String(50), nullable=False, default='pending')  # Status (e.g., sent, failed)
+    image = db.Column(db.String(255), nullable=True)
+    user_id = db.Column(db.Integer, nullable=False)
+    type = db.Column(db.String(50), nullable=False)
+    service = db.Column(db.String(50), nullable=False)
+    status = db.Column(db.String(50), nullable=False, default='pending')
+    is_read = db.Column(db.Boolean, default=False)  # ✅ New field to track if notification is read
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    live_until = db.Column(db.DateTime, nullable=True)  # Expiration time for the notification
+    live_until = db.Column(db.DateTime, nullable=True)
 
-    def __init__(self, title, description, navigation, body, image, user_id, type, service, status='pending', live_until=None):
+    def __init__(self, title, description, navigation, body, image, user_id, type, service, status='pending', live_until=None, is_read=False):
         self.title = title
         self.description = description
         self.navigation = navigation
@@ -28,6 +29,7 @@ class Notifications(db.Model):
         self.service = service
         self.status = status
         self.live_until = live_until
+        self.is_read = is_read
 
     def to_dict(self):
         return {
@@ -41,6 +43,7 @@ class Notifications(db.Model):
             'type': self.type,
             'service': self.service,
             'status': self.status,
+            'is_read': self.is_read,  # ✅ Include is_read in the response
             'created_at': self.created_at.isoformat(),
             'live_until': self.live_until.isoformat() if self.live_until else None
         }

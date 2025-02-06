@@ -1,4 +1,5 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify,url_for, redirect
+from authlib.integrations.flask_client import OAuth
 from ..models import OTP, User, BountyPoints, BugBountyWallet, Professional, ExpiredToken, Device, RefreshToken
 from ..db import db
 import jwt
@@ -9,10 +10,26 @@ from sqlalchemy import or_, and_
 from ..utils import token_required
 from .aws import send_email, send_sms
 
+oauth = OAuth()
+
 auth_bp = Blueprint('auth', __name__)
 
 ACCESS_TOKEN_EXPIRY = timedelta(days=7)
 REFRESH_TOKEN_EXPIRY = timedelta(days=90)
+GOOGLE_SECRET_KEY = "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"
+GOOGLE_CLIENT_ID="1091879209729-cgcpomne1038165a5k3c5jge2vg90a7l.apps.googleusercontent.com"
+
+google = oauth.register(
+    'google',
+    consumer_key=GOOGLE_CLIENT_ID,
+    consumer_secret=GOOGLE_SECRET_KEY,
+    request_token_params={"scope": "email profile"},
+    base_url="https://www.googleapis.com/oauth2/v1/",
+    request_token_url=None,
+    access_token_method="POST",
+    access_token_url="https://accounts.google.com/o/oauth2/token",
+    authorize_url="https://accounts.google.com/o/oauth2/auth",
+)
 
 def generate_jwt_token(user, expires_in):
     payload = {
@@ -23,16 +40,55 @@ def generate_jwt_token(user, expires_in):
     }
     return jwt.encode(payload, current_app.config['JWT_SECRET_KEY'], algorithm='HS256')
 
+# signup with google
+@auth_bp.route("/google/signup", methods=["POST"])
+def google_login():
+    return google.authorize(callback=url_for("auth.google_authorized", _external=True))
+
+@auth_bp.route("/login/google/callback")
+def google_authorized():
+    response = google.authorized_response()
+    if response is None or response.get("access_token") is None:
+        return jsonify({"message": "Google login failed"}), 400
+
+    google_data = google.get("userinfo")
+    email = google_data.data["email"]
+    
+    # Check if user exists
+    user = User.query.filter_by(email=email).first()
+
+    if not user:
+        user = User(
+            user_name=google_data.data["name"],
+            email=email,
+            signup_using="google",
+            email_verified=True,  # Since Google verifies email
+        )
+        db.session.add(user)
+        db.session.commit()
+
+    token = generate_jwt_token(user, ACCESS_TOKEN_EXPIRY)
+
+    return jsonify({"message": "Login successful", "token": token, "user": user.to_dict()}), 200
+
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
     data = request.get_json()
     print("Data in signup request:", data)
 
     role = data.get('role')
-    email = data.get('email') or f"noemail{str(datetime.utcnow().timestamp())}@gmail.com"
+    email = data.get('email')
     phone = data.get('phone')
     password = data.get('password')
     print("Password is here:", password)
+
+    # Determine signup method
+    if phone:
+        signup_using = 'phone'
+    elif email:
+        signup_using = 'email'
+    else:
+        return jsonify({"message": "Either phone or email is required"}), 400
 
     # Check if user already exists by email or phone
     existing_user = User.query.filter(
@@ -50,7 +106,7 @@ def signup():
         role=role,
         user_name=data.get('user_name', 'Anonymous User'),  # Default to 'Anonymous User' if not provided
         email=email,
-        surname=data.get('surname','No SurName'),
+        surname=data.get('surname', 'No Surname'),
         phone=phone,
         hashed_password=password,  # Will be set later by the password hash function
         date_of_birth=data.get('date_of_birth', ''),  # Default empty string if not provided
@@ -61,7 +117,8 @@ def signup():
         term_conditions_signed=False,  # Default to False
         is_anonymous='no',  # Default to 'no'
         user_status=1,  # Default to active status
-        sign_up_date=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")  # Set current time as signup date
+        sign_up_date=datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),  # Set current time as signup date
+        signup_using=signup_using  # Store signup method
     )
 
     # Set the password
@@ -71,26 +128,29 @@ def signup():
         db.session.add(new_user)
         db.session.flush()  # Flush to get the new user ID before committing
 
+        bug_bounty_wallet = BugBountyWallet(
+            user_id=new_user.id,
+            total_points=50,
+            recommended_points=50,
+            # bounty_points=[initial_bounty_points]
+        )
+        db.session.add(bug_bounty_wallet)
+        db.session.flush()
         # Create initial bounty points
         initial_bounty_points = BountyPoints(
+            wallet_id=bug_bounty_wallet.id,
             user_id=new_user.id,
             name="Welcome Bonus",
             category="Signup Reward",
             points=50,
             recommended_points=50,
             last_added_points=50,
-            date=datetime.utcnow()
+            date=datetime.utcnow(),
+            month=datetime.utcnow().strftime('%m-%Y')
         )
         db.session.add(initial_bounty_points)
 
         # Create a wallet and link the bounty points
-        bug_bounty_wallet = BugBountyWallet(
-            user_id=new_user.id,
-            total_points=50,
-            recommended_points=50,
-            bounty_points=[initial_bounty_points]
-        )
-        db.session.add(bug_bounty_wallet)
 
         token = generate_jwt_token(new_user, ACCESS_TOKEN_EXPIRY)
         refresh_token = generate_jwt_token(new_user, REFRESH_TOKEN_EXPIRY)
@@ -117,18 +177,20 @@ def signup():
                 ]
             },
             "token": token,
-            "refresh-token":refresh_token
+            "refresh-token": refresh_token
         }), 201
-
     except SQLAlchemyError as e:
         db.session.rollback()
         print(f"Database Error: {e}")
         return jsonify({"message": "An error occurred during registration"}), 500
 
+
+
 @auth_bp.route('/signin', methods=['POST'])
 def signin():
     data = request.get_json()
     print("data", data)
+
     email = data.get('email')
     phone = data.get('phone')
     password = data.get('password')
@@ -137,13 +199,21 @@ def signin():
         return jsonify({"message": "Either email or phone number must be provided"}), 400
 
     user = None
+    login_method = None
+
     if email:
         user = User.query.filter_by(email=email).first()
+        login_method = 'email'
     elif phone:
         user = User.query.filter_by(phone=phone).first()
+        login_method = 'phone'
 
     if user is None:
         return jsonify({"message": "User not found"}), 404
+
+    # Check if the login method matches the signup method
+    if user.signup_using != login_method:
+        return jsonify({"message": f"You must log in using {user.signup_using}"}), 403
 
     if not user.check_password(password):
         return jsonify({"message": "Invalid password"}), 401
@@ -174,8 +244,8 @@ def signin():
     return jsonify({
         "message": "Login successful",
         "token": token,
-        "refresh-token":refresh_token,
-        "user": user.to_dict(), 
+        "refresh-token": refresh_token,
+        "user": user.to_dict(),
         "bugBountyWallet": {
             "totalPoints": bug_bounty_wallet.total_points,
             "recommendedPoints": bug_bounty_wallet.recommended_points,
@@ -323,7 +393,7 @@ def mobile_otp(current_user):
     transaction_id = OTP.generate_transaction_id()
     expires_at = datetime.utcnow() + timedelta(minutes=5)  # OTP valid for 5 minutes
 
-    token_user_id = request.user_data.get('user_id')
+    token_user_id = current_user.get('user_id')
     if token_user_id != user_id:
         return jsonify({"message": "Authentication error: User ID mismatch"}), 403
 
@@ -381,7 +451,7 @@ def verify_mobile_otp(current_user):
     data = request.get_json()
     transaction_id = data.get('transaction_id')
     otp_code = data.get('otp')
-    user_id = data.get("user_id")
+    user_id = current_user.get('user_id')
 
     if not transaction_id or not otp_code:
         return jsonify({"message": "Transaction ID and OTP are required"}), 400
@@ -485,7 +555,7 @@ def verify_email_otp(current_user):
     data = request.get_json()
     transaction_id = data.get('transaction_id')
     otp_code = data.get('otp')
-    user_id = data.get("user_id")
+    user_id = current_user.get('user_id')
 
     # Validate input data
     if not transaction_id or not otp_code or not user_id:
@@ -513,10 +583,8 @@ def verify_email_otp(current_user):
 
     # Update email verification for the corresponding entity
     if user:
-        user.email = otp_entry.email
         user.email_verified = True
     elif professional:
-        professional.email = otp_entry.email
         professional.email_verified = True
 
     # Commit the changes to the database

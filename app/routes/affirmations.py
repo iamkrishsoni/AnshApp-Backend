@@ -68,15 +68,18 @@ def create_permanent_affirmation(current_user):
         # Logic for awarding bounty points
         # Check if this is the first time the user creates an affirmation
         first_time_affirmation = not DailyActivity.query.filter_by(user_id=user_id).first()
+        bounty_wallet = BugBountyWallet.query.filter_by(user_id=user.id).first()
         if first_time_affirmation:
             bounty_points = BountyPoints(
+                wallet_id=bounty_wallet.id,
                 user_id=user_id,
                 name="Affirmations",
                 category="First Time Update",
                 points=30,
                 recommended_points=30,
                 last_added_points=30,
-                date=datetime.utcnow()
+                date=datetime.utcnow(),
+                month=datetime.utcnow().strftime('%m-%Y')
             )
             db.session.add(bounty_points)
             # Update the user's bounty wallet

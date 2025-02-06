@@ -19,7 +19,7 @@ class Professional(db.Model):
     license_number = db.Column(db.String(500))
     years_of_experience = db.Column(db.Integer)
     user_name = db.Column(db.String(100), nullable=False, default ="user name")
-    email = db.Column(db.String(255), unique=True, nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=True)
     hashed_password = db.Column(db.String(255), nullable=False)
     phone = db.Column(db.String(15))
     date_of_birth = db.Column(db.Date)
@@ -31,6 +31,7 @@ class Professional(db.Model):
     term_conditions_signed = db.Column(db.Boolean, default=True)
     sign_up_date = db.Column(db.String(50))
     user_status = db.Column(db.Integer, nullable=False, default=1)
+    signup_using = db.Column(db.String(10), nullable=False, default='phone')
     # New relationship with Schedule
     schedules = db.relationship('Schedule', back_populates='professional', lazy=True)
     # device = db.relationship('Device', back_populates='user', uselist=False)

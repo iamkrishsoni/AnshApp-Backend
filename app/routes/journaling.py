@@ -49,18 +49,22 @@ def add_journaling(current_user):  # Assuming `current_user` is passed by the `t
 
         # Logic for awarding bounty points
         user_id = current_user.get('user_id')
+        user = User.query.get(user_id)
 
         # Check if this is the first journaling activity for the user
+        bounty_wallet = BugBountyWallet.query.filter_by(user_id=user.id).first()
         first_time_journaling = not DailyActivity.query.filter_by(user_id=user_id).first()
         if first_time_journaling:
             bounty_points = BountyPoints(
+                wallet_id=bounty_wallet.id,
                 user_id=user_id,
                 name="Journaling",
                 category="First Time Update",
                 points=30,
                 recommended_points=30,
                 last_added_points=30,
-                date=datetime.utcnow()
+                date=datetime.utcnow(),
+                month=datetime.utcnow().strftime('%m-%Y')
             )
             db.session.add(bounty_points)
 

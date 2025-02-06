@@ -54,17 +54,32 @@ def create_vision_board(current_user):  # Assuming `current_user` is passed by t
 
         # Logic to award 50 bounty points for first-time vision board creation
         user_id = current_user.get('user_id')
+        user = User.query.get(user_id)
+
+        # Check if this is the first journaling activity for the user
+        bounty_wallet = BugBountyWallet.query.filter_by(user_id=user.id).first()
         first_time_vision_board = not VisionBoard.query.filter_by(user_id=user_id).first()
         print(first_time_vision_board)
 
         if first_time_vision_board:
-            print(f"User {user_id} is creating their first vision board. Awarding bounty points...")
-            # Call the global function to add bounty points
-            success = add_bounty_points(user_id, points=50, category="First Time Update", name="Vision Board")
-            if not success:
-                print(f"Failed to add bounty points for user {user_id}.")
-                return jsonify({"error": "Failed to add bounty points"}), 500
-            print(f"Bounty points successfully awarded to user {user_id} for their first vision board.")
+            bounty_points = BountyPoints(
+                wallet_id=bounty_wallet.id,
+                user_id=user_id,
+                name="Vision Board",
+                category="First Time Update",
+                points=50,
+                recommended_points=50,
+                last_added_points=50,
+                date=datetime.utcnow(),
+                month=datetime.utcnow().strftime('%m-%Y')
+            )
+            db.session.add(bounty_points)
+
+            # Update the user's bounty wallet
+            wallet = BugBountyWallet.query.filter_by(user_id=user_id).first()
+            if wallet:
+                wallet.total_points += 50
+                wallet.recommended_points += 50
 
         # Commit the changes to the database
         db.session.commit()

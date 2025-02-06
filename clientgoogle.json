@@ -1,0 +1,11 @@
+{
+    "web": {
+        "client_id": "615195159354-8qkpnsj6vmq5qql664qsg6kh0ogcevb1.apps.googleusercontent.com",
+        "project_id": "eclinition-d2ff7",
+        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+        "token_uri": "https://oauth2.googleapis.com/token",
+        "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+        "client_secret": "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",
+        "redirect_uri":"http://192.168.1.35:8081"
+    }
+}

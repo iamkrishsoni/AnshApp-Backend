@@ -31,7 +31,7 @@ def create_professional():
         # Ensure at least one of email or phone and password is provided
         if not data.get('password') or not (data.get('email') or data.get('phone')):
             return jsonify({"error": "Password and either email or phone are required."}), 400
-        email = data.get('email') or f"noemail{str(datetime.utcnow().timestamp())}@gmail.com"
+        email = data.get('email')
         phone = data.get('phone')
         # Check if a professional with the same email or phone already exists
         existing_professional = Professional.query.filter(

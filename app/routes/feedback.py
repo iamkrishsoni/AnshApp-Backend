@@ -41,7 +41,7 @@ def submitFeedback():
             category="Feedback",
             points=10,
             recommended_points=10,
-            last_added_points=10
+            last_added_points=10,
         )
         db.session.add(new_bounty_points)
 
