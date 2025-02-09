@@ -123,6 +123,7 @@ def update_user_avatar(current_user):
 
     try:
         db.session.commit()
+        updated_user = User.query.get(userid)
 
         # Fetch associated wallet and bounty points
         bug_bounty_wallet = BugBountyWallet.query.filter_by(user_id=user.id).first()
@@ -140,7 +141,7 @@ def update_user_avatar(current_user):
         # Return updated user data in the required format
         return jsonify({
             "message": "Avatar updated successfully",
-            "user": user.to_dict(),  # Convert user object to dictionary
+            "user": updated_user.to_dict(),  # Convert user object to dictionary
             "bugBountyWallet": {
                 "totalPoints": bug_bounty_wallet.total_points if bug_bounty_wallet else 0,
                 "recommendedPoints": bug_bounty_wallet.recommended_points if bug_bounty_wallet else 0,

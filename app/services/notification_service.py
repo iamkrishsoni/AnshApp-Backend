@@ -217,7 +217,6 @@ def generate_inactivity_nudges():
     print(f"📢 Weekly inactivity nudges sent to {len(user_ids)} users.")
     return user_ids
 
-
 def generate_monthly_recheck_reminders():
     """Generate and send a mental fitness recheck reminder on the 1st of every month."""
     message = "Time for a mental fitness check-up! Reassess your journey today. 💪"
@@ -241,7 +240,6 @@ def generate_monthly_recheck_reminders():
 
     print(f"📢 Monthly recheck reminders sent to {len(user_ids)} users.")
     return user_ids
-
 
 def generate_fun_nudges():
     """Generate and send fun nudges on Saturday OR Sunday at 2:00 PM."""
@@ -274,7 +272,6 @@ def generate_fun_nudges():
 
     print(f"📢 Weekly fun nudges sent to {len(user_ids)} users.")
     return user_ids
-
 
 def generate_checkin_nudges(time_of_day):
     """Generate and send check-in nudges (Morning at 9:30 AM, Evening at 8:30 PM)."""
@@ -317,7 +314,6 @@ def generate_checkin_nudges(time_of_day):
     print(f"📢 {time_of_day.capitalize()} check-in nudges sent to {len(user_ids)} users.")
     return user_ids
 
-
 def affirmationdaily(time_of_day):
     """Generate and send affirmations (Morning at 7:00 AM, Afternoon at 3:00 PM)."""
     morning_affirmations = [
@@ -359,7 +355,6 @@ def affirmationdaily(time_of_day):
     print(f"📢 {time_of_day.capitalize()} affirmations sent to {len(user_ids)} users.")
     return user_ids
 
-
 def generate_goal_setting_nudge():
     """Generate and send a goal-setting reminder every Sunday at 6:00 PM."""
     message = "Set your goals for the week—small steps, big wins! 🎯"
@@ -382,7 +377,6 @@ def generate_goal_setting_nudge():
 
     print(f"📢 Goal-setting reminders sent to {len(users)} users.")
     return notifications
-
 
 def generate_journaling_nudge(time_of_day):
     """Generate and send journaling reminders (Morning Gratitude, End-of-Day Reflection)."""
