@@ -158,7 +158,7 @@ def update_schedule(current_user, schedule_id):
     # Check if the status is 'session-completed' to add bounty points
     if schedule.status == 'session-completed':
         # Retrieve the user's wallet
-        wallet = BountyWallet.query.filter_by(user_id=schedule.user_id).first()
+        wallet = BugBountyWallet.query.filter_by(user_id=schedule.user_id).first()
         if wallet:
             # Update wallet's total points
             wallet.total_points += 50
