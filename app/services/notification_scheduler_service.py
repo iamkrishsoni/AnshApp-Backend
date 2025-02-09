@@ -17,7 +17,8 @@ from .notification_service import (
     generate_goal_setting_nudge,
     generate_journaling_nudge,
     generate_vision_board_nudge,
-    generate_mindfulness_nudge
+    generate_mindfulness_nudge,
+    delete_old_notifications
 )
 from .goal_service import update_goal_status_automatically
 
@@ -37,7 +38,7 @@ def start_scheduler(app: Flask):
     # ✅ Job: Update Goal Status (Every 1 Minute)
     scheduler.add_job(
         func=job_wrapper(update_goal_status_automatically),
-        trigger=IntervalTrigger(minutes=1),
+        trigger=IntervalTrigger(minutes=5),
         id='goal_status_updater',
         name='Update goal statuses automatically',
         replace_existing=True
@@ -46,7 +47,7 @@ def start_scheduler(app: Flask):
     # ✅ Job: Send Scheduled Notifications (Every 1 Minute)
     scheduler.add_job(
         func=job_wrapper(send_scheduled_notifications),
-        trigger=IntervalTrigger(minutes=1),
+        trigger=IntervalTrigger(minutes=5),
         id="scheduled_notifications",
         name="Send Scheduled Notifications",
         replace_existing=True
@@ -64,7 +65,7 @@ def start_scheduler(app: Flask):
     # ✅ Job: Afternoon Motivation (Mon, Wed, Fri at 12:00 PM)
     scheduler.add_job(
         func=job_wrapper(generate_afternoon_notifications),
-        trigger=CronTrigger(day_of_week="mon,wed,fri", hour=12, minute=0),
+        trigger=CronTrigger(day_of_week="mon,wed,fri", hour=14, minute=0),
         id="afternoon_notifications",
         name="Send Afternoon Motivation Notifications",
         replace_existing=True
@@ -73,7 +74,7 @@ def start_scheduler(app: Flask):
     # ✅ Job: Evening Motivation (Tue, Thu, Sat, Sun at 7:00 PM)
     scheduler.add_job(
         func=job_wrapper(generate_evening_notifications),
-        trigger=CronTrigger(day_of_week="tue,thu,sat,sun", hour=19, minute=0),
+        trigger=CronTrigger(day_of_week="tue,thu,sat,sun", hour=14, minute=20),
         id="evening_notifications",
         name="Send Evening Motivation Notifications",
         replace_existing=True
@@ -102,7 +103,7 @@ def start_scheduler(app: Flask):
     random_day = random.choice(["sat", "sun"])
     scheduler.add_job(
         func=job_wrapper(generate_fun_nudges),
-        trigger=CronTrigger(day_of_week=random_day, hour=14, minute=0),
+        trigger=CronTrigger(day_of_week=random_day, hour=14, minute=15),
         id="fun_nudges",
         name="Send Weekly Fun Nudges",
         replace_existing=True
@@ -197,5 +198,15 @@ def start_scheduler(app: Flask):
         name="Send Afternoon Mindfulness Reminder",
         replace_existing=True
     )
+    scheduler.add_job(
+        func=job_wrapper(delete_old_notifications),
+        trigger=CronTrigger(minute=0),  # This will run every hour, at minute 0
+        id="delete_old_notifications",
+        name="Delete Old Notifications",
+        replace_existing=True
+    )
 
     scheduler.start()
+    print(f"Scheduler running: {scheduler.running}")
+    print(f"Scheduled Jobs: {scheduler.get_jobs()}")
+

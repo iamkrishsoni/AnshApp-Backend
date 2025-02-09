@@ -13,7 +13,6 @@ def add_journaling(current_user):  # Assuming `current_user` is passed by the `t
     data = request.get_json()
     try:
         # Create a new Journaling object
-        print(current_user)
         new_journal = Journaling(
             user_id=current_user.get('user_id'),  # Use the ID of the currently authenticated user
             title=data['title'],
@@ -109,7 +108,6 @@ def add_journaling(current_user):  # Assuming `current_user` is passed by the `t
         return jsonify({"message": "Journaling entry added successfully!", "data": new_journal.to_dict()}), 201
     except Exception as e:
         db.session.rollback()
-        print(str(e))
         return jsonify({"error": str(e)}), 400
 
 # Get all journaling entries for the current user

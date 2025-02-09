@@ -4,7 +4,7 @@ from flask import request, jsonify, current_app
 from jwt import ExpiredSignatureError, InvalidTokenError
 from ..db import db
 from datetime import datetime
-from ..models import ExpiredToken  # Import your models (assuming SQLAlchemy is being used)
+from ..models import ExpiredToken , User # Import your models (assuming SQLAlchemy is being used)
 
 def token_required(f):
     @wraps(f)
@@ -48,3 +48,38 @@ def token_required(f):
             return jsonify({'message': f'Error processing token: {str(e)}'}), 500
 
     return decorated
+
+def parse_token():
+    """Parse and validate the token passed from the frontend."""
+    token = request.auth.get('token')  # The token will be in the query string (URL params)
+
+    if not token:
+        print("❌ Token not found")
+        return None
+
+    try:
+        secret_key = current_app.config.get('JWT_SECRET_KEY')
+        # Decode the JWT token using the secret key (replace Config.JWT_SECRET_KEY with your secret key)
+        decoded_token = jwt.decode(token, secret_key, algorithms=["HS256"])
+        user_id = decoded_token.get("user_id")  # Extract user_id or other relevant info
+
+        if not user_id:
+            print("❌ Invalid token, user_id not found")
+            return None
+
+        # Fetch the user from the database if the token is valid
+        current_user = decoded_token
+
+        if not current_user:
+            print("❌ User not found")
+            return None
+
+        return current_user  # Return the current user object if everything is valid
+
+    except jwt.ExpiredSignatureError:
+        print("❌ Token expired")
+    except jwt.InvalidTokenError:
+        print("❌ Invalid token")
+
+    return None
+

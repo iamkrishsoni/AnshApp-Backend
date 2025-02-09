@@ -35,7 +35,6 @@ def update_user(current_user):
 
     userid = current_user.get('user_id')  # Assuming `current_user` contains the user ID
     data = request.get_json()
-    print(data)
 
     # Validate input data
     # errors = user_schema.validate(data)
@@ -96,7 +95,6 @@ def update_user(current_user):
         }), 200
     except SQLAlchemyError as e:
         db.session.rollback()
-        print(f"Database Error: {e}")  # Log the error for debugging
         return jsonify({"message": "An error occurred while updating the user"}), 500
 
 

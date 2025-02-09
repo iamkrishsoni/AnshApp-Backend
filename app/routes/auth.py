@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from flask import current_app
 from sqlalchemy import or_, and_
 from ..utils import token_required
-from .aws import send_email, send_sms
+from .aws import send_email, send_sms, send_otp_email
 
 oauth = OAuth()
 
@@ -74,13 +74,11 @@ def google_authorized():
 @auth_bp.route('/signup', methods=['POST'])
 def signup():
     data = request.get_json()
-    print("Data in signup request:", data)
 
     role = data.get('role')
     email = data.get('email')
     phone = data.get('phone')
     password = data.get('password')
-    print("Password is here:", password)
 
     # Determine signup method
     if phone:
@@ -181,7 +179,6 @@ def signup():
         }), 201
     except SQLAlchemyError as e:
         db.session.rollback()
-        print(f"Database Error: {e}")
         return jsonify({"message": "An error occurred during registration"}), 500
 
 
@@ -189,7 +186,6 @@ def signup():
 @auth_bp.route('/signin', methods=['POST'])
 def signin():
     data = request.get_json()
-    print("data", data)
 
     email = data.get('email')
     phone = data.get('phone')
@@ -312,7 +308,6 @@ def refresh():
 @auth_bp.route('/forgot-password', methods=['POST'])
 def forgetPassword():
     data = request.get_json()
-    print("data", data)
     
     # Extract fields from the request
     role = data.get('role')
@@ -356,7 +351,6 @@ def forgetPassword():
         subject = "Password Recovery"
         content = f"Hello {user.user_name},\n\nYour password is: {user.hashed_password}\n\nRegards,\nSupport Team"
         email_response = send_email(email=email, subject=subject, content=content)
-        print(email_response)
 
         return jsonify({
             "message": "Password recovery email sent",
@@ -366,12 +360,12 @@ def forgetPassword():
         # Generate OTP and send it via SMS
         otp = user.hashed_password,  # Generate a 6-digit OTP
         sms_response = send_sms(phone, otp)
-        print(sms_response)
 
         return jsonify({
             "message": "OTP sent to phone",
             "otp": otp,  # In real cases, you wouldn't return the OTP, it's just for demo
         }), 200
+
 @auth_bp.route('/mobile-otp', methods=['POST'])
 @token_required
 def mobile_otp(current_user):
@@ -404,6 +398,7 @@ def mobile_otp(current_user):
         transaction_id=transaction_id,
         expires_at=expires_at
     )
+    sms_sent = send_sms(phone_number=phone, otp=otp_code)
     db.session.add(new_otp)
     db.session.commit()
 
@@ -507,6 +502,7 @@ def email_otp(current_user):
         transaction_id=transaction_id,
         expires_at=expires_at
     )
+    send_otp_email(email=email, otp=otp_code)
     db.session.add(new_otp)
     db.session.commit()
 
@@ -662,7 +658,6 @@ def signout():
         return jsonify({"message": "Token is missing or invalid."}), 401
 
     token = auth_header.split(" ")[1]
-    print("Received token:", token)
 
     try:
         # Decode JWT access token

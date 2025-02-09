@@ -1,7 +1,7 @@
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask import request, jsonify
 from .redis_config import redis_client  # Import Redis for active user storage
-from .utils import token_required
+from .utils import token_required, parse_token
 from .models import Notifications
 import json
 from .db import db
@@ -10,20 +10,22 @@ from .db import db
 socketio = SocketIO(cors_allowed_origins="*")
 
 @socketio.on("connect")
-@token_required
-def handle_connect(current_user):
-    user_id = str(current_user.get("user_id"))  # Get user ID
-    session_id = request.sid  # Get session ID
+def handle_connect(auth):
+    """Handle the WebSocket connection."""
+    print(f"🚀 New connection request received. SID: {request.sid}")
+    # user_id = auth.get("user_id")
+    user_id="42"
+    print("user id in soket", user_id)
+    try:
+        # Store the active user session in Redis
+        redis_client.hset("active_users",user_id, request.sid)
+        join_room(request.sid)
+        print(f"✅ User {user_id} connected and added to Redis.")
 
-    print(f"🚀 handle_connect triggered for User ID: {user_id}, Session ID: {session_id}")  # ✅ Debug Log
-
-    redis_client.hset("active_users", user_id, session_id)  # ✅ Store user session in Redis
-
-    join_room(user_id)  # ✅ Join user-specific room
-    print(f"✅ User {user_id} connected and added to Redis.")
-
-    # Notify all users (optional)
-    socketio.emit("user_status_update", {"user_id": user_id, "status": "online"}, broadcast=True)
+    except Exception as e:
+        print(f"❌ Error during connection: {e}")
+        socketio.emit('error', {'message': str(e)}, room=request.sid)
+        return False  # Ensures the connection does not proceed if there's an error
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -62,7 +64,7 @@ def send_realtime_notification(user_id, title, message):
             "title": title,
             "message": message,
         }
-        socketio.emit("new_notification", notification_data, room=str(user_id))
+        socketio.emit("new_notification", notification_data, room=user_id)
         print(f"📢 Real-time notification sent to user {user_id}")
     else:
         print(f"⚠️ User {user_id} is offline. Notification not sent in real-time.")
@@ -97,7 +99,7 @@ def send_notification(data):
 
     send_realtime_notification(user_id, title, message)
 
-    return jsonify({"message": f"Notification sent to user {user_id}"}), 200
+    # return jsonify({"message": f"Notification sent to user {user_id}"}), 200
 
 @socketio.on("*")
 def catch_all_events(event, data):

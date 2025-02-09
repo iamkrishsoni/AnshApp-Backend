@@ -26,7 +26,6 @@ def generate_jwt_token(user,role, expires_in):
 @professional_bp.route('/professionals', methods=['POST'])
 def create_professional():
     data = request.get_json()
-    print("Data in professional signup request:", data.get('email'))
     try:
         # Ensure at least one of email or phone and password is provided
         if not data.get('password') or not (data.get('email') or data.get('phone')):
@@ -155,7 +154,6 @@ def update_professional(current_user,id):
             "user": professional.to_dict(),
         }), 200
     except Exception as e:
-        print({str(e)})
         return jsonify({"error": str(e)}), 400
 
 

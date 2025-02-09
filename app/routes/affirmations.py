@@ -190,7 +190,6 @@ def get_daily_affirmations(current_user):
 @affirmation_bp.route('/permanent', methods=['GET'])
 @token_required
 def get_permanent_affirmations(current_user):
-    print("current user",current_user)
     userid = current_user.get('user_id')
     user = User.query.get(userid)
     if not user:
@@ -211,7 +210,6 @@ def get_permanent_affirmations(current_user):
         "affirmation_type": aff.affirmation_type,
         "isDark": aff.isdark
     } for aff in permanent_affirmations]
-    print(affirmations_list)
 
     return jsonify(affirmations_list), 200
 

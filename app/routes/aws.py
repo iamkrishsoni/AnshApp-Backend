@@ -18,20 +18,46 @@ sns_client = boto3.client(
 )
 
 def send_sms(phone_number, otp):
-    """
-    Send an SMS message with the given OTP to the specified phone number.
-
-    :param phone_number: Recipient phone number in international format (e.g., +1234567890).
-    :param otp: The OTP or message to send.
-    """
     try:
+        phone_number = str(phone_number).strip()
+        
+        # Ensure +91 prefix
+        if not phone_number.startswith("+91"):
+            phone_number = f"+91{phone_number}"
+        
         response = sns_client.publish(
             PhoneNumber=phone_number,
-            Message=f'Your OTP is {otp}'
+            Message=f'Your Verification OTP for AnshAp is {otp}'
         )
+
+        print(f"✅ OTP Sent Successfully: {response}")
         return response
     except Exception as e:
-        print(f"Failed to send SMS: {e}")
+        print(f"❌ Failed to send SMS: {e}")
+        return None
+
+def send_otp_email(email, otp):
+    try:
+        subject = "AnshAp OTP Verification"
+        content = f"Your OTP for AnshAp verification is: {otp}. Please do not share this code with anyone."
+
+        # Create or retrieve the topic for OTP emails
+        response = sns_client.create_topic(Name="email-otp")
+        topic_arn = response["TopicArn"]
+
+        # Subscribe the email to the topic (Only needed for the first time, requires confirmation)
+        sns_client.subscribe(TopicArn=topic_arn, Protocol="email", Endpoint=email)
+
+        # Publish the OTP message
+        response = sns_client.publish(
+            TopicArn=topic_arn,
+            Subject=subject,
+            Message=content
+        )
+
+        return response
+    except Exception as e:
+        print(f"❌ Failed to send OTP email: {e}")
         return None
 
 def send_email(email, subject, content):

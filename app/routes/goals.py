@@ -302,8 +302,4 @@ def delete_goal(current_user, goal_id):
 
     except Exception as e:
         db.session.rollback()
-    
-    # Print the error to the console
-        print(f"Error: {str(e)}")
-    
         return jsonify({"error": str(e)}), 500
