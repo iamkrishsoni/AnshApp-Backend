@@ -10,16 +10,15 @@ from .db import db
 socketio = SocketIO(cors_allowed_origins="*")
 
 @socketio.on("connect")
-def handle_connect(auth):
+def handle_connect():
     """Handle the WebSocket connection."""
     print(f"🚀 New connection request received. SID: {request.sid}")
-    # user_id = auth.get("user_id")
-    user_id="42"
+    user_id = request.args.get("user_id","42")
     print("user id in soket", user_id)
     try:
         # Store the active user session in Redis
         redis_client.hset("active_users",user_id, request.sid)
-        join_room(request.sid)
+        join_room(user_id)
         print(f"✅ User {user_id} connected and added to Redis.")
 
     except Exception as e:
@@ -57,14 +56,10 @@ def handle_custom_event(data):
         emit("receive_message", {"message": message}, room=user_id)
 
 # ✅ Function to Send a Real-Time Notification to a Specific User
-def send_realtime_notification(user_id, title, message):
+def send_realtime_notification(user_id, notification):
     """Emit a real-time notification to a specific user if online."""
     if redis_client.hexists("active_users", str(user_id)):  # Check if user is online
-        notification_data = {
-            "title": title,
-            "message": message,
-        }
-        socketio.emit("new_notification", notification_data, room=user_id)
+        socketio.emit("new_notification", notification, room=user_id)
         print(f"📢 Real-time notification sent to user {user_id}")
     else:
         print(f"⚠️ User {user_id} is offline. Notification not sent in real-time.")
@@ -97,7 +92,7 @@ def send_notification(data):
     db.session.add(new_notification)
     db.session.commit()
 
-    send_realtime_notification(user_id, title, message)
+    send_realtime_notification(user_id, notification=new_notification.to_dict())
 
     # return jsonify({"message": f"Notification sent to user {user_id}"}), 200
 
