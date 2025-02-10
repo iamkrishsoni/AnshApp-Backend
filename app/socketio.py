@@ -1,10 +1,12 @@
-from flask_socketio import SocketIO, emit, join_room, leave_room
+from flask_socketio import SocketIO, emit, join_room, leave_room, send
 from flask import request, jsonify
 from .redis_config import redis_client  # Import Redis for active user storage
 from .utils import token_required, parse_token
-from .models import Notifications
+from .models import Notifications, ChatRoom, ChatMessage, MessageAttachment
 import json
+import uuid
 from .db import db
+from datetime import datetime
 
 # ✅ Create a global SocketIO instance (Attach in `app.py`)
 socketio = SocketIO(cors_allowed_origins="*")
@@ -95,6 +97,171 @@ def send_notification(data):
     send_realtime_notification(user_id, notification=new_notification.to_dict())
 
     # return jsonify({"message": f"Notification sent to user {user_id}"}), 200
+
+
+@socketio.on('join_chat')
+def handle_join_chat(data):
+    if isinstance(data, str):
+        data = json.loads(data)
+    room_id = data.get('chatroom_id')
+    user_id = data.get('user_id')
+
+    if not room_id or not user_id:
+        return jsonify({'error': 'chatroom_id and user_id are required'}), 400
+
+    # Check if the room exists, create it if it doesn't
+    chat_room = ChatRoom.query.filter_by(id=room_id).first()
+    # if not chat_room:
+    #     chat_room = ChatRoom(id=room_id, user_id=user_id, professional_id=user_id)
+    #     db.session.add(chat_room)
+    #     db.session.commit()
+    join_room(room_id)
+    print(f"User {user_id} joined room {room_id}")
+    emit('user_joined', {'message': f'User {user_id} joined the chat room.'}, room=room_id)
+
+@socketio.on('leave_chat')
+def handle_leave_chat(data):
+    if isinstance(data, str):
+        data = json.loads(data)
+    room_id = data.get('chatroom_id')
+    user_id = data.get('user_id')
+
+    if not room_id or not user_id:
+        return jsonify({'error': 'chatroom_id and user_id are required'}), 400
+
+    # Leave the room
+    leave_room(room_id)
+    print(f"User {user_id} left room {room_id}")
+    emit('user_left', {'message': f'User {user_id} left the chat room.'}, room=room_id)
+
+@socketio.on('send_message')
+def handle_send_message(data):
+    print("📩 Received message event:", data)
+
+    try:
+        if isinstance(data, str):
+            data = json.loads(data)
+
+        sender_id = data.get('sender_id')
+        role = data.get('role')
+        message_type = data.get('message_type', 'TEXT').upper()
+        file_url = data.get('file_url', '')
+        message_content = data.get('message_content', '')
+
+        if not sender_id or not role or not message_type:
+            emit('error', {"message": "Missing required fields"})
+            return
+
+        chat_room_id = data.get('chat_room_id')
+        chat_room = ChatRoom.query.get(chat_room_id)
+        print("chatroom", chat_room.user_id)
+
+        if not chat_room:
+            print("❌ Chat room not found")
+            emit('error', {"message": "Chat room not found"})
+            return
+
+        # Ensure the sender is in the room
+        # join_room(chat_room_id)
+
+        # Check authorization
+        if (role == 'user' and chat_room.user_id != sender_id) or \
+           (role == 'professional' and chat_room.professional_id != sender_id):
+            print('unauthorized')
+            emit('error', {"message": "Unauthorized"})
+            return
+
+        recipient_id = chat_room.professional_id if role == 'user' else chat_room.user_id
+        sender_name = "User" if role == 'user' else "Professional"
+
+        # Validate message type
+        if message_type == 'TEXT' and not message_content:
+            emit('error', {"message": "Text content is required for TEXT messages"})
+            return
+        elif message_type != 'TEXT' and not file_url:
+            emit('error', {"message": f"File URL is required for {message_type} messages"})
+            return
+
+        # Save message in database
+        new_message = ChatMessage(
+            chat_room_id=chat_room_id,
+            sender_id=sender_id,
+            sender_name=sender_name,
+            sender_type=role,
+            message_type=message_type,
+            message_content=message_content if message_type == 'TEXT' else None,
+            timestamp=datetime.now(),
+            msg_id=str(uuid.uuid4()),
+            from_uid=sender_id,
+            recipient_id=recipient_id,
+            receipt=1,
+        )
+
+        db.session.add(new_message)
+        db.session.commit()
+
+        # Save attachments if needed
+        if message_type != 'TEXT':
+            attachment = MessageAttachment(
+                chat_message_id=new_message.id,
+                attachment_type=message_type,
+                url=file_url,
+                file_name=file_url.split("/")[-1],
+                file_size=0,
+            )
+            db.session.add(attachment)
+            db.session.commit()
+
+        # Emit to the room
+        emit('new_message', {
+            "message": "Message sent successfully",
+            "message_id": new_message.msg_id,
+            "chat_room_id": chat_room_id,
+            "sender_id": sender_id,
+            "message_type": message_type,
+            "message_content": message_content,
+            "file_url": file_url,
+            "timestamp": new_message.timestamp.isoformat(),
+            "sender_name": sender_name,
+            "user":{
+                "_id":sender_id,
+                "name":sender_name
+            }
+        }, room=chat_room_id)
+
+        print(f"✅ Message emitted to room {chat_room_id}")
+
+    except json.JSONDecodeError:
+        emit('error', {"message": "Invalid JSON format"})
+    except Exception as e:
+        print(f"❌ Exception: {e}")
+        emit('error', {"message": "Unexpected error", "error": str(e)})
+
+@socketio.on('message')
+def handle_message(data):
+    """ This event handles basic messages sent with the default message event. """
+    emit('message', {'data': data}, broadcast=True)
+
+@socketio.on('send_attachment')
+def handle_send_attachment(data):
+    """ Handle media file attachments sent by the client. """
+    # Save the attachment in the database and emit to the room
+    chatroom_id = data.get('chatroom_id')
+    message = ChatMessage.from_message_data(data, chatroom_id)
+
+    # Handle attachments
+    if 'attachments' in data:
+        for attachment_data in data['attachments']:
+            attachment = MessageAttachment.from_attachment_data(attachment_data, message.id)
+            db.session.add(attachment)
+
+    db.session.commit()
+
+    # Emit the message with media to the room
+    emit('new_message', message.to_dict(), room=chatroom_id)
+# Optional: Send notifications to users in a room when a new message arrives
+def send_notification_to_room(room_id, message_data):
+    send(message_data, room=room_id)
 
 @socketio.on("*")
 def catch_all_events(event, data):
