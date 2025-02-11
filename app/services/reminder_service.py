@@ -39,7 +39,7 @@ def schedule_reminder_notifications(reminder):
 
                 # ✅ Check if the user is online and send a real-time notification
                 if redis_client.hexists("active_users", str(user_id)):
-                    send_realtime_notification(user_id, notification.title, notification.description)
+                    send_realtime_notification(user_id, notification)
                     print(f"📢 Sent real-time reminder to User {user_id} - {description}")
                 else:
                     print(f"⚠️ User {user_id} is offline. Reminder saved for later.")

@@ -67,12 +67,12 @@ def schedule_session_notifications(schedule):
 
                 # ✅ Check if User is Online & Send Real-Time Notification
                 if redis_client.hexists("active_users", str(user.id)):
-                    send_realtime_notification(user.id, user_notification.title, user_notification.description)
+                    send_realtime_notification(user.id, user_notification)
                     print(f"📢 Sent real-time session reminder to User {user.id} - {description}")
 
                 # ✅ Check if Professional is Online & Send Real-Time Notification
                 if redis_client.hexists("active_users", str(professional.id)):
-                    send_realtime_notification(professional.id, professional_notification.title, professional_notification.description)
+                    send_realtime_notification(professional.id, professional_notification)
                     print(f"📢 Sent real-time session reminder to Professional {professional.id} - {description}")
 
                 # ✅ Schedule Delayed Notifications for Users Who Are Offline

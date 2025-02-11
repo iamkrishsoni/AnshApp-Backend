@@ -80,7 +80,7 @@ def send_scheduled_notifications():
 
                 # ✅ Send real-time notification if the user is online
                 if redis_client.hexists("active_users", str(user_id)):
-                    send_realtime_notification(user_id, notification.title, notification.description)
+                    send_realtime_notification(user_id, notification, notification)
                     print(f"📢 Sent real-time scheduled notification to User {user_id}")
 
                 # ✅ Mark notification as sent
@@ -211,7 +211,7 @@ def generate_inactivity_nudges():
         )
 
         if redis_client.hexists("active_users", str(user_id)):
-            send_realtime_notification(user_id, "Time to Reconnect! 🔄", message)
+            send_realtime_notification(user_id, "Time to Reconnect! 🔄")
             print(f"📢 Sent real-time inactivity nudge to User {user_id}")
 
     print(f"📢 Weekly inactivity nudges sent to {len(user_ids)} users.")
@@ -235,7 +235,7 @@ def generate_monthly_recheck_reminders():
         )
 
         if redis_client.hexists("active_users", str(user_id)):
-            send_realtime_notification(user_id, "Monthly Recheck Reminder 📅", message)
+            send_realtime_notification(user_id, "Monthly Recheck Reminder 📅")
             print(f"📢 Sent real-time monthly recheck reminder to User {user_id}")
 
     print(f"📢 Monthly recheck reminders sent to {len(user_ids)} users.")
@@ -267,7 +267,7 @@ def generate_fun_nudges():
         )
 
         if redis_client.hexists("active_users", str(user_id)):
-            send_realtime_notification(user_id, "Weekly Fun Nudge 🎭", message)
+            send_realtime_notification(user_id, "Weekly Fun Nudge 🎭")
             print(f"📢 Sent real-time fun nudge to User {user_id}")
 
     print(f"📢 Weekly fun nudges sent to {len(user_ids)} users.")
@@ -308,7 +308,7 @@ def generate_checkin_nudges(time_of_day):
         )
 
         if redis_client.hexists("active_users", str(user_id)):
-            send_realtime_notification(user_id, f"Daily Check-In: {time_of_day.capitalize()} ☀️", message)
+            send_realtime_notification(user_id, f"Daily Check-In: {time_of_day.capitalize()} ☀️")
             print(f"📢 Sent real-time {time_of_day} check-in nudge to User {user_id}")
 
     print(f"📢 {time_of_day.capitalize()} check-in nudges sent to {len(user_ids)} users.")
@@ -349,7 +349,7 @@ def affirmationdaily(time_of_day):
         )
 
         if redis_client.hexists("active_users", str(user_id)):
-            send_realtime_notification(user_id, f"Morning Affirmation ☀️" if time_of_day == "morning" else "Afternoon Affirmation ⚡", message)
+            send_realtime_notification(user_id, f"Morning Affirmation ☀️" if time_of_day == "morning" else "Afternoon Affirmation ⚡")
             print(f"📢 Sent real-time {time_of_day} affirmation to User {user_id}")
 
     print(f"📢 {time_of_day.capitalize()} affirmations sent to {len(user_ids)} users.")
@@ -373,7 +373,7 @@ def generate_goal_setting_nudge():
         )
 
         if redis_client.hexists("active_users", str(user.id)):
-            send_realtime_notification(user.id, "Weekly Goal Setting 📝", message)
+            send_realtime_notification(user.id, "Weekly Goal Setting 📝")
 
     print(f"📢 Goal-setting reminders sent to {len(users)} users.")
     return notifications
@@ -407,7 +407,7 @@ def generate_journaling_nudge(time_of_day):
         )
 
         if redis_client.hexists("active_users", str(user.id)):
-            send_realtime_notification(user.id, f"Morning Gratitude ✨" if time_of_day == "morning" else "End-of-Day Reflection 🌙", message)
+            send_realtime_notification(user.id, f"Morning Gratitude ✨" if time_of_day == "morning" else "End-of-Day Reflection 🌙")
 
     print(f"📢 {time_of_day.capitalize()} journaling reminders sent to {len(users)} users.")
     return notifications
@@ -430,7 +430,7 @@ def generate_vision_board_nudge():
         )
 
         if redis_client.hexists("active_users", str(user.id)):
-            send_realtime_notification(user.id, "Vision Board Update 🎨", message)
+            send_realtime_notification(user.id, "Vision Board Update 🎨")
 
     print(f"📢 Vision board reminders sent to {len(users)} users.")
 
@@ -460,7 +460,7 @@ def generate_mindfulness_nudge(time_of_day):
         )
 
         if redis_client.hexists("active_users", str(user.id)):
-            send_realtime_notification(user.id, f"Morning Mindfulness 🌞" if time_of_day == "morning" else "Afternoon Mindfulness ☀️", message)
+            send_realtime_notification(user.id, f"Morning Mindfulness 🌞" if time_of_day == "morning" else "Afternoon Mindfulness ☀️")
 
     print(f"📢 {time_of_day.capitalize()} mindfulness reminders sent to {len(users)} users.")
     return notifications
