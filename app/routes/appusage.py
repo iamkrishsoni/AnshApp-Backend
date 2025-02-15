@@ -4,6 +4,7 @@ from ..db import db
 from sqlalchemy.exc import SQLAlchemyError
 from datetime import datetime
 from ..utils import token_required
+from sqlalchemy.orm.attributes import flag_modified
 
 # Define a Blueprint for app usage routes
 app_usage_bp = Blueprint("app_usage", __name__)
@@ -14,7 +15,7 @@ def add_app_usage():
     try:
         data = request.json
         user_id = data.get("user_id")
-        time_spent = data.get("time_spent", 0)  # Time in seconds
+        time_spent = float(data.get("time_spent", 0))  # Time in seconds
         usage_type = data.get("usage_type", "foreground")  # Default to foreground
         date_str = data.get("date")  # Date provided by user (expected format: YYYY-MM-DD)
 
@@ -31,8 +32,11 @@ def add_app_usage():
         # Check if a record exists for the user on this date
         app_usage = AppUsage.query.filter_by(user_id=user_id, date=date).first()
 
+        print('time spent', time_spent)
         if app_usage:
-            app_usage.time_spent += time_spent  # Update time spent
+            app_usage.time_spent += time_spent
+            flag_modified(app_usage, "time_spent")  # Force SQLAlchemy to detect change
+            db.session.commit()
         else:
             app_usage = AppUsage(
                 user_id=user_id,
