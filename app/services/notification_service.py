@@ -80,7 +80,7 @@ def send_scheduled_notifications():
 
                 # ✅ Send real-time notification if the user is online
                 if redis_client.hexists("active_users", str(user_id)):
-                    send_realtime_notification(user_id, notification, notification)
+                    send_realtime_notification(user_id, notification)
                     print(f"📢 Sent real-time scheduled notification to User {user_id}")
 
                 # ✅ Mark notification as sent

@@ -87,7 +87,7 @@ def schedule_session_notifications(schedule):
                 scheduler.add_job(
                     send_realtime_notification,
                     trigger=DateTrigger(run_date=time),
-                    args=[professional.id, professional_notification.title, professional_notification.description],
+                    args=[professional.id, professional_notification],
                     id=f'professional_session_{schedule.id}_{description}',
                     replace_existing=True
                 )
