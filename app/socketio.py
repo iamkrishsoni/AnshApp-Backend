@@ -34,9 +34,11 @@ def handle_disconnect():
 
     # Find user by session_id
     user_id = None
-    for uid, sid in redis_client.hgetall("active_users").items():
-        if sid == session_id:
-            user_id = uid
+    active_users = redis_client.hgetall("active_users")  # Returns dict {user_id: sid}
+
+    for uid, sid in active_users.items():
+        if sid.decode('utf-8') == session_id:  # Decode bytes to string
+            user_id = uid.decode('utf-8')  # Decode user_id as well
             break
 
     if user_id:
@@ -44,8 +46,9 @@ def handle_disconnect():
         leave_room(user_id)
         print(f"❌ User {user_id} disconnected")
 
-        # Notify all users (optional)
-        socketio.emit("user_status_update", {"user_id": user_id, "status": "offline"}, broadcast=True)
+        # Notify all users
+        socketio.emit("user_status_update", {"user_id": user_id, "status": "offline"}, to=None)
+
 
 @socketio.on("custom_event")
 def handle_custom_event(data):

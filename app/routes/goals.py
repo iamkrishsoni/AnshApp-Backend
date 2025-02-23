@@ -3,6 +3,7 @@ from datetime import datetime, time
 from ..models import Goals, User, DailyActivity
 from ..db import db
 from ..utils import token_required
+from sqlalchemy import func
 
 goal_bp = Blueprint('goal', __name__)
 
@@ -41,6 +42,13 @@ def add_goal(current_user):
         # Defaults for time fields
         start_time = None
         end_time = None
+        
+        today = datetime.utcnow().date()  # Get today's date
+        existing_goal = Goals.query.filter_by(userid=userid).filter(       
+            func.date(Goals.created_at) == today
+        ).first()
+
+        first_goal_of_today = existing_goal is None
 
         if goal_type == "daily":
             # Require start_time and end_time for daily goals
@@ -101,7 +109,8 @@ def add_goal(current_user):
 
         return jsonify({
             "message": "Goal added successfully",
-            "goal": new_goal.to_dict()
+            "goal": new_goal.to_dict(),
+            "first_goal":first_goal_of_today
         }), 201
 
     except Exception as e:

@@ -3,6 +3,7 @@ from ..db import db
 from ..models import VisionBoard, User, DailyActivity, BountyPoints, BugBountyWallet
 from datetime import datetime
 from ..utils import token_required, add_bounty_points
+from sqlalchemy import func
 
 vision_board_bp = Blueprint('vision_board', __name__)
 
@@ -13,6 +14,16 @@ def create_vision_board(current_user):  # Assuming `current_user` is passed by t
     data = request.get_json()
 
     try:
+        from sqlalchemy import func
+
+        today = datetime.utcnow().date()  # Get today's date
+
+        # Check if a vision board has already been created today
+        existing_vision_board = VisionBoard.query.filter_by(user_id=current_user.get('user_id')).filter(
+            func.date(VisionBoard.date) == today
+        ).first()
+
+        first_vision_board_of_today = existing_vision_board is None
         # Create a new VisionBoard object
         new_board = VisionBoard(
             user_id=current_user.get('user_id'),  # Use the ID of the currently authenticated user
@@ -84,7 +95,10 @@ def create_vision_board(current_user):  # Assuming `current_user` is passed by t
         # Commit the changes to the database
         db.session.commit()
 
-        return jsonify({"message": "VisionBoard created successfully!", "data": new_board.to_dict()}), 201
+        return jsonify({"message": "VisionBoard created successfully!",
+                        "data": new_board.to_dict(),
+                        "first_vb":first_time_vision_board
+                        }), 201
     except Exception as e:
         db.session.rollback()
         return jsonify({"error": str(e)}), 400

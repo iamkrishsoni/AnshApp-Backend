@@ -19,18 +19,23 @@ def create_permanent_affirmation(current_user):
     affirmation_text = data.get('affirmation_text')
     reminder_active = data.get('reminder_active', False)
     reminder_time = data.get('reminder_time')
-    bg_type = data.get('bg_type')  # New field
-    bg_image = data.get('bg_image')  # New field
-    bg_video = data.get('bg_video')  # New field
+    bg_type = data.get('bg_type')
+    bg_image = data.get('bg_image')
+    bg_video = data.get('bg_video')
     affirmation_type = data.get('affirmation_type')
-    isdark = data.get('is_dark')  # New field
+    isdark = data.get('is_dark')
 
     # Fetch the user to ensure it exists
     user = User.query.get(user_id)
     if not user:
         return jsonify({"message": "User not found"}), 404
 
-    # Create the PermanentAffirmation object with the new fields
+    # Check if this is the first affirmation for today
+    today = datetime.today().strftime('%Y-%m-%d')
+    existing_affirmation = PermanentAffirmation.query.filter_by(user_id=user_id, created_at=today).first()
+    first_aff_today = existing_affirmation is None  # True if no affirmation exists for today
+
+    # Create the PermanentAffirmation object
     permanent_affirmation = PermanentAffirmation(
         affirmation_text=affirmation_text,
         user_id=user_id,
@@ -42,18 +47,18 @@ def create_permanent_affirmation(current_user):
         affirmation_type=affirmation_type,
         isdark=isdark
     )
-    try:
-        # Add the new affirmation to the session
-        db.session.add(permanent_affirmation)
-        today = datetime.today().strftime('%Y-%m-%d')
-        daily_activity = DailyActivity.query.filter_by(user_id=user_id, date=today).first()
 
-        # If DailyActivity doesn't exist, create one
+    try:
+        # Add to session
+        db.session.add(permanent_affirmation)
+
+        # Handle DailyActivity
+        daily_activity = DailyActivity.query.filter_by(user_id=user_id, date=today).first()
         if not daily_activity:
             daily_activity = DailyActivity(
                 user_id=user_id,
                 date=today,
-                affirmation_completed=True,  # Set affirmation to completed
+                affirmation_completed=True,
                 journaling=False,
                 mindfulness=False,
                 goalsetting=False,
@@ -62,11 +67,9 @@ def create_permanent_affirmation(current_user):
             )
             db.session.add(daily_activity)
         else:
-            # If DailyActivity exists, just update affirmation_completed to True
             daily_activity.affirmation_completed = True
 
         # Logic for awarding bounty points
-        # Check if this is the first time the user creates an affirmation
         first_time_affirmation = not DailyActivity.query.filter_by(user_id=user_id).first()
         bounty_wallet = BugBountyWallet.query.filter_by(user_id=user.id).first()
         if first_time_affirmation:
@@ -82,11 +85,10 @@ def create_permanent_affirmation(current_user):
                 month=datetime.utcnow().strftime('%m-%Y')
             )
             db.session.add(bounty_points)
-            # Update the user's bounty wallet
-            wallet = BugBountyWallet.query.filter_by(user_id=user_id).first()
-            if wallet:
-                wallet.total_points += 30
-                wallet.recommended_points += 30
+            # Update bounty wallet
+            if bounty_wallet:
+                bounty_wallet.total_points += 30
+                bounty_wallet.recommended_points += 30
 
         # Check for 3 consecutive days of affirmations
         last_three_days = [
@@ -110,15 +112,17 @@ def create_permanent_affirmation(current_user):
                 date=datetime.utcnow()
             )
             db.session.add(bounty_points)
-            # Update the user's bounty wallet
-            wallet = BugBountyWallet.query.filter_by(user_id=user_id).first()
-            if wallet:
-                wallet.total_points += 20
-                wallet.recommended_points += 20
+            if bounty_wallet:
+                bounty_wallet.total_points += 20
+                bounty_wallet.recommended_points += 20
 
-        # Commit the changes to the database
+        # Commit changes
         db.session.commit()
-        return jsonify({"message": "Permanent affirmation created successfully"}), 201
+        return jsonify({
+            "message": "Permanent affirmation created successfully",
+            "first_aff_today": first_aff_today  # Send the flag in response
+        }), 201
+
     except SQLAlchemyError as e:
         db.session.rollback()
         return jsonify({"message": str(e)}), 500

@@ -3,54 +3,63 @@ from ..models import Journaling, User, DailyActivity, BountyPoints, BugBountyWal
 from ..db import db
 from ..utils import token_required
 from datetime import datetime, timedelta
+from sqlalchemy import func
 
 journaling_bp = Blueprint('journaling', __name__)
 
 # Add a new journaling entry
 @journaling_bp.route('/add', methods=['POST'])
 @token_required
-def add_journaling(current_user):  # Assuming `current_user` is passed by the `token_required` decorator
+def add_journaling(current_user):  
     data = request.get_json()
     try:
+        user_id = current_user.get('user_id')
+
+        # Check if this is the first journaling entry of today
+        today = datetime.utcnow().date()  # Get today's date (YYYY-MM-DD)
+        existing_journal = Journaling.query.filter_by(user_id=user_id).filter(
+            func.date(Journaling.date) == today  # Convert `Journaling.date` to just the date part
+        ).first()
+        print("existing journaling", existing_journal)
+
+        first_journaling = existing_journal is None # True if no journaling exists for today
+
         # Create a new Journaling object
         new_journal = Journaling(
-            user_id=current_user.get('user_id'),  # Use the ID of the currently authenticated user
+            user_id=user_id,
             title=data['title'],
             description=data.get('description'),
             day_overall=data.get('day_overall'),
             image=data.get('image'),
             audio=data.get('audio'),
             bg_color=data.get('bg_color', "#ffffff"),  # Default value if not provided
-            date=datetime.utcnow()  # Ensure UTC date is set
+            date=datetime.utcnow()  
         )
 
-        # Add the journaling entry to the database
+        # Add to database
         db.session.add(new_journal)
-        today = datetime.today().strftime('%Y-%m-%d')
-        daily_activity = DailyActivity.query.filter_by(user_id=current_user.get('user_id'), date=today).first()
 
-        # If DailyActivity doesn't exist, create one
+        # Handle DailyActivity
+        daily_activity = DailyActivity.query.filter_by(user_id=user_id).filter(
+            func.date(DailyActivity.date) == today
+        ).first()
         if not daily_activity:
             daily_activity = DailyActivity(
-                user_id=current_user.get('user_id'),
+                user_id=user_id,
                 date=today,
-                affirmation_completed=False,  # Set default values as False
-                journaling=True,
+                affirmation_completed=False,  
+                journaling=True,  # Set journaling to True
                 mindfulness=False,
                 goalsetting=False,
-                visionboard=False,  # Mark vision board as not completed
+                visionboard=False,  
                 app_usage_time=0
             )
             db.session.add(daily_activity)
         else:
-            # If DailyActivity exists, update journaling to True
-            daily_activity.journaling = True
+            daily_activity.journaling = True  # Update journaling status
 
         # Logic for awarding bounty points
-        user_id = current_user.get('user_id')
         user = User.query.get(user_id)
-
-        # Check if this is the first journaling activity for the user
         bounty_wallet = BugBountyWallet.query.filter_by(user_id=user.id).first()
         first_time_journaling = not DailyActivity.query.filter_by(user_id=user_id).first()
         if first_time_journaling:
@@ -67,11 +76,10 @@ def add_journaling(current_user):  # Assuming `current_user` is passed by the `t
             )
             db.session.add(bounty_points)
 
-            # Update the user's bounty wallet
-            wallet = BugBountyWallet.query.filter_by(user_id=user_id).first()
-            if wallet:
-                wallet.total_points += 30
-                wallet.recommended_points += 30
+            # Update bounty wallet
+            if bounty_wallet:
+                bounty_wallet.total_points += 30
+                bounty_wallet.recommended_points += 30
 
         # Check for 3 consecutive days of journaling
         last_three_days = [
@@ -96,18 +104,23 @@ def add_journaling(current_user):  # Assuming `current_user` is passed by the `t
             )
             db.session.add(bounty_points)
 
-            # Update the user's bounty wallet
-            wallet = BugBountyWallet.query.filter_by(user_id=user_id).first()
-            if wallet:
-                wallet.total_points += 20
-                wallet.recommended_points += 20
+            # Update bounty wallet
+            if bounty_wallet:
+                bounty_wallet.total_points += 20
+                bounty_wallet.recommended_points += 20
 
-        # Commit the changes to the database
+        # Commit changes
         db.session.commit()
 
-        return jsonify({"message": "Journaling entry added successfully!", "data": new_journal.to_dict()}), 201
+        return jsonify({
+            "message": "Journaling entry added successfully!",
+            "first_journaling": first_journaling,  # Include this in response
+            "data": new_journal.to_dict()
+        }), 201
+
     except Exception as e:
         db.session.rollback()
+        print(str(e))
         return jsonify({"error": str(e)}), 400
 
 # Get all journaling entries for the current user

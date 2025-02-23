@@ -15,6 +15,7 @@ class Goals(db.Model):
     start_date = db.Column(db.Date, nullable=True)  # For monthly and yearly goals
     end_date = db.Column(db.Date, nullable=True)    # For monthly and yearly goals
     status = db.Column(db.String(255), default="Added", nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     
     def to_dict(self):
         
@@ -30,4 +31,5 @@ class Goals(db.Model):
             "start_date": self.start_date.isoformat() if self.start_date else None,
             "end_date": self.end_date.isoformat() if self.end_date else None,
             "status": self.status,
+            "created_at": self.created_at.isoformat()
         }
